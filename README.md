@@ -60,7 +60,7 @@ Automatiza la instalación de **Apache/Nginx, PHP, MariaDB/MySQL, Node.js, Pytho
 ![Menú Principal](docs/screenshots/main-menu.png)
 ![Resumen Instalación](docs/screenshots/installation-summary.png)
 
-_(Capturas no disponiblea por el momento.)_
+_(Capturas no disponibles por el momento.)_
 
 ---
 

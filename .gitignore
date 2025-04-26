@@ -1,0 +1,26 @@
+# Archivos temporales
+/tmp/
+/logs/
+/downloads/
+/bin/
+/etc/ssl/
+/etc/apps/
+/www/
+/config/
+/C:/webServer/tmp/
+/C:/webServer/logs/
+/C:/webServer/downloads/
+/C:/webServer/etc/ssl/
+/C:/webServer/etc/apps/
+/C:/webServer/bin/
+/C:/webServer/www/
+/C:/webServer/config/
+
+# Archivos específicos
+*.log
+*.zip
+*.exe
+*.crt
+*.key
+*.env
+*.pem
