@@ -1,4 +1,4 @@
-# WebServer-Setup for Windows (Git Bash Edition)
+# WebServer-Setup para Windows +10 (Git Bash Edition)
 
 ¡Bienvenido a **WebServer-Setup**! 🚀
 
