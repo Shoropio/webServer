@@ -420,13 +420,20 @@ EOF
     fi
 }
 
-# Función para configurar el archivo host
+# Función para configurar el archivo hosts de Windows
 configure_hosts_file() {
-    # Para Git Bash en Windows
-    echo -e "${BLUE}Configurando el archivo hosts...${NC}"
-    # echo "127.0.0.1      $VIRTUAL_HOST_NAME      # WebServer" >> /c/Windows/System32/drivers/etc/hosts
-    echo "127.0.0.1      $VIRTUAL_HOST_NAME      # WebServer" >> C:/Windows/System32/drivers/etc/hosts
-    echo -e "${GREEN}Entrada agregada al archivo hosts.${NC}"
+    local hosts_file="C:/Windows/System32/drivers/etc/hosts"
+    local entry="127.0.0.1      $VIRTUAL_HOST_NAME      # WebServer"
+
+    echo -e "${BLUE}↪ Configurando el archivo hosts...${NC}"
+
+    # Verificar si ya existe
+    if grep -q "$VIRTUAL_HOST_NAME" "$hosts_file"; then
+        echo -e "${YELLOW}⚠️ El dominio $VIRTUAL_HOST_NAME ya existe en el archivo hosts. No se agregará de nuevo.${NC}"
+    else
+        echo "$entry" >> "$hosts_file"
+        echo -e "${GREEN}✔ Entrada agregada al archivo hosts.${NC}"
+    fi
 }
 
 # Función para configurar SSL
@@ -1078,16 +1085,41 @@ download_file() {
     local filename=$2
     local dest_dir=$3
 
-    echo -e "${BLUE}Descargando $filename...${NC}"
+    echo -e "${BLUE}↪ Descargando $filename...${NC}"
+
+    mkdir -p "$dest_dir" || {
+        echo -e "${RED}✖ Error al crear directorio de descarga: $dest_dir${NC}"
+        return 1
+    }
 
     if [ ! -f "$dest_dir/$filename" ]; then
-        if ! wget -q --show-progress -O "$dest_dir/$filename" "$url"; then
-            echo -e "${RED}Error al descargar $filename${NC}"
+        # Intentar primero con wget
+        if command -v wget &> /dev/null; then
+            wget -q --show-progress -O "$dest_dir/$filename" "$url" || {
+                echo -e "${YELLOW}⚠️ wget falló. Intentando con curl...${NC}"
+                # Si wget falla, intentar con curl
+                if command -v curl &> /dev/null; then
+                    curl -L --output "$dest_dir/$filename" "$url" || {
+                        echo -e "${RED}✖ Error al descargar $filename${NC}"
+                        return 1
+                    }
+                else
+                    echo -e "${RED}✖ No se encontró ni wget ni curl para descargar.${NC}"
+                    return 1
+                fi
+            }
+        elif command -v curl &> /dev/null; then
+            curl -L --output "$dest_dir/$filename" "$url" || {
+                echo -e "${RED}✖ Error al descargar $filename${NC}"
+                return 1
+            }
+        else
+            echo -e "${RED}✖ No se encontró wget ni curl para descargar archivos.${NC}"
             return 1
         fi
-        echo -e "${GREEN}Descarga completada: $filename${NC}"
+        echo -e "${GREEN}✔ Descarga completada: $filename${NC}"
     else
-        echo -e "${YELLOW}El archivo $filename ya existe, omitiendo descarga${NC}"
+        echo -e "${YELLOW}⚠️ El archivo $filename ya existe, omitiendo descarga.${NC}"
     fi
 }
 
