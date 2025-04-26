@@ -24,6 +24,13 @@ YELLOW='\033[1;33m'
 BLUE='\033[0;34m'
 NC='\033[0m' # No Color
 
+# Detectar el usuario de Windows
+USERNAME="${USERNAME:-$(whoami)}"
+USER_HOME_DIR="$USERNAME"
+
+#USERNAME="Shoropio"
+#USERPROFILE="C:\\Users\\Shoropio"
+
 # Generar .env si no existe
 generate_default_env() {
     # Asegurar que el directorio base exista antes de crear el .env
@@ -46,7 +53,7 @@ LOGS_DIR="C:/webServer/logs"
 # Variables de versión por defecto
 DEFAULT_PHP_VERSION="8.3.20"
 DEFAULT_PYTHON_VERSION="3.13.3"
-DEFAULT_NODE_VERSION="22.14.0"
+DEFAULT_NODE_VERSION="22.15.0"
 # DEFAULT_DB_ENGINE="MySQL"
 # DEFAULT_DB_VERSION="8.0.42"
 DEFAULT_DB_ENGINE="MariaDB"
@@ -61,7 +68,7 @@ DEFAULT_GIT_VERSION="2.49.0"
 VIRTUAL_HOST_NAME="webserver.local"
 SSL_ENABLED=true
 EOF
-    echo -e "${GREEN}✓ Archivo .env generado con valores por defecto.${NC}"
+    echo -e "${GREEN}✓ Archivo webServer.env generado con valores por defecto.${NC}"
 }
 
 # Llamar load_env()
@@ -300,6 +307,7 @@ EOF
     fi
 }
 
+# Función para configurar el Virtual Host
 configure_virtual_host() {
     # Crear el directorio del virtual host
     read -p "¿Deseas configurar un virtual host? (s/n, por defecto n): " add_vhost
@@ -627,7 +635,7 @@ EOF
     fi
 }
 
-# Función para
+# Función para generar vhosts por defecto
 generate_default_nginx_vhosts() {
     local sites_enabled_path="$ETC_DIR/nginx/sites-enabled"
     local templates_path="$WEB_SERVER_DIR/templates/nginx"
@@ -716,6 +724,7 @@ install_git() {
     # Para Windows, descargar e instalar Git
     git_exe="Git-$git_version-64-bit.exe"
     git_url="https://github.com/git-for-windows/git/releases/download/v$git_version.windows.1/$git_exe"
+    # https://github.com/git-for-windows/git/releases/download/v2.49.0.windows.1/Git-2.49.0-64-bit.exe
 
     download_file "$git_url" "$git_exe" "$DOWNLOADS_DIR"
 
@@ -727,9 +736,9 @@ install_git() {
         # Agregar Git al PATH (normalmente se hace automáticamente durante la instalación)
         add_to_path "C:\\Program Files\\Git\\bin"
 
-        echo -e "${GREEN}Git $git_version instalado correctamente${NC}"
+        echo -e "${GREEN}Git $git_version instalado correctamente.${NC}"
     else
-        echo -e "${RED}Error al descargar Git${NC}"
+        echo -e "${RED}Error al descargar Git.${NC}"
         return 1
     fi
 
@@ -1050,16 +1059,28 @@ EOF
 # Función para agregar a las variables de entorno
 add_to_path() {
     local path_to_add=$1
+
+    # Verificar si la ruta ya está en el PATH
     if [[ ":$PATH:" != *":$path_to_add:"* ]]; then
         echo -e "${BLUE}Agregando $path_to_add a las variables de entorno...${NC}"
 
         # Para Git Bash en Windows
         if [ -f ~/.bash_profile ]; then
-            echo "export PATH=\"\$PATH:$path_to_add\"" >> ~/.bash_profile
-            source ~/.bash_profile
+            # Verificar si ya existe la ruta en .bash_profile
+            if ! grep -q "$path_to_add" ~/.bash_profile; then
+                echo "export PATH=\"\$PATH:$path_to_add\"" >> ~/.bash_profile
+                source ~/.bash_profile
+            else
+                echo -e "${YELLOW}La ruta $path_to_add ya existe en .bash_profile${NC}"
+            fi
         else
-            echo "export PATH=\"\$PATH:$path_to_add\"" >> ~/.bashrc
-            source ~/.bashrc
+            # Verificar si ya existe la ruta en .bashrc
+            if ! grep -q "$path_to_add" ~/.bashrc; then
+                echo "export PATH=\"\$PATH:$path_to_add\"" >> ~/.bashrc
+                source ~/.bashrc
+            else
+                echo -e "${YELLOW}La ruta $path_to_add ya existe en .bashrc${NC}"
+            fi
         fi
 
         # También agregar al PATH del sistema Windows
@@ -1078,6 +1099,7 @@ add_to_path() {
         echo -e "${YELLOW}La ruta $path_to_add ya está en el PATH${NC}"
     fi
 }
+
 
 # Función para descargar archivos
 download_file() {
@@ -1170,10 +1192,10 @@ install_php() {
     echo -e "${BLUE}Instalando PHP...${NC}"
     php_version=$(get_version "PHP" $DEFAULT_PHP_VERSION)
 
-
     # Para Git Bash, descargar e instalar manualmente
     php_zip="php-$php_version-Win32-vs16-x64.zip"
     php_url="https://windows.php.net/downloads/releases/$php_zip"
+    # https://windows.php.net/downloads/releases/php-8.3.20-Win32-vs16-x64.zip
 
     download_file "$php_url" "$php_zip" "$DOWNLOADS_DIR"
 
@@ -1201,13 +1223,6 @@ install_php() {
         sed -i 's/;extension=zip/extension=zip/' "$ini_file"
         sed -i 's/;extension=intl/extension=intl/' "$ini_file"
 
-        # PHP en Git Bash (Windows)
-        # for ext in intl bcmath soap iconv fileinfo exif imagick redis memcached tokenizer simplexml dom; do
-            # if ! grep -q "extension=$ext" "$php_ini"; then
-                # echo "extension=$ext" >> "$php_ini"
-            # fi
-        # done
-
         # Establecer la ruta de extension_dir en php.ini
         sed -i "s|;extension_dir = \"ext\"|extension_dir = \"C:\\\\webServer\\\\bin\\\\php\\\\$php_version\\\\ext\"|" "$ini_file"
         sed -i 's|^;session.save_path = "/tmp"|session.save_path = "$WEB_SERVER_DIR/tmp"|' "$ini_file"
@@ -1223,8 +1238,6 @@ install_php() {
         sed -i 's/^post_max_size = .*/post_max_size = 2G/' "$ini_file"
         sed -i 's/^upload_max_filesize = .*/upload_max_filesize = 2G/' "$ini_file"
         sed -i 's/^session.gc_maxlifetime = .*/session.gc_maxlifetime = 36000/' "$ini_file"
-        # sed -i 's/^zlib.output_compression = .*/zlib.output_compression = On/' "$ini_file"
-        # sed -i 's|;date.timezone =|date.timezone = "America/Costa_Rica"|' "$ini_file"
         sed -i 's/^;date.timezone = .*/date.timezone = "America/Costa_Rica"/' "$ini_file"
 
         # Establecer session.save_path
@@ -1233,9 +1246,9 @@ install_php() {
         # Guardar versión instalada
         echo "$php_version" > "$CONFIG_DIR/php_version.conf"
 
-        echo -e "${GREEN}✅ PHP $php_version instalado correctamente en $BIN_DIR/php/$php_version${NC}"
+        echo -e "${GREEN}PHP $php_version instalado correctamente en $BIN_DIR/php/$php_version.${NC}"
     else
-        echo -e "${RED}❌ Error al descargar PHP.${NC}"
+        echo -e "${RED}Error al descargar PHP.${NC}"
         return 1
     fi
 
@@ -1250,72 +1263,37 @@ install_composer() {
     # Para Git Bash en Windows
     echo -e "${BLUE}Descargando instalador de Composer para Windows...${NC}"
 
-    # Asegurar que el directorio de descargas existe
+    # Crear el directorio de descargas
     mkdir -p "$DOWNLOADS_DIR" || {
-        echo -e "${RED}Error: No se pudo crear el directorio de descargas${NC}"
+        echo -e "${RED}Error: No se pudo crear el directorio de downloads.${NC}"
         return 1
     }
 
-    # Descargar el instalador de Windows
-    installer_url="https://getcomposer.org/Composer-Setup.exe"
-    installer_file="$DOWNLOADS_DIR/Composer-Setup.exe"
+    #
+    composer_exe="Composer-Setup.exe"
+    composer_url="https://getcomposer.org/$composer_exe"
 
-    # Verificar si ya existe el instalador
-    if [ ! -f "$installer_file" ]; then
-        if command -v curl &> /dev/null; then
-            curl -L -o "$installer_file" "$installer_url" || {
-                echo -e "${RED}Error al descargar con curl${NC}"
-                return 1
-            }
-        elif command -v wget &> /dev/null; then
-            wget -O "$installer_file" "$installer_url" || {
-                echo -e "${RED}Error al descargar con wget${NC}"
-                return 1
-            }
+    download_file "$composer_url" "$composer_exe" "$DOWNLOADS_DIR"
+
+    if [ -f "$DOWNLOADS_DIR/$composer_exe" ]; then
+        echo -e "${BLUE}Instalando Composer...${NC}"
+        # Instalar Composer en modo silencioso con las opciones predeterminadas
+        "$DOWNLOADS_DIR/$composer_exe" /SILENT /NORESTART /NOCANCEL /SP- /CLOSEAPPLICATIONS /RESTARTAPPLICATIONS /COMPONENTS="icons,ext\reg\shellhere,assoc,assoc_sh"
+
+        # Agregar Composer al PATH (normalmente se hace automáticamente durante la instalación)
+        add_to_path "C:\Users\\$USER_HOME_DIR\AppData\Roaming\Composer\vendor\bin"
+
+        echo -e "${GREEN}Composer $composer_version instalado correctamente.${NC}"
+
+        # Verificar la instalación
+        if command -v composer &> /dev/null; then
+            composer --version
         else
-            echo -e "${RED}Error: Necesitas curl o wget instalado para descargar Composer${NC}"
-            echo -e "${YELLOW}Por favor descarga manualmente desde:${NC}"
-            echo -e "${BLUE}https://getcomposer.org/Composer-Setup.exe${NC}"
-            echo -e "${YELLOW}Y guárdalo en: $installer_file${NC}"
-            read -p "Presiona Enter cuando hayas completado la descarga manual..."
-
-            if [ ! -f "$installer_file" ]; then
-                echo -e "${RED}Error: No se encontró el instalador en $installer_file${NC}"
-                return 1
-            fi
+            echo -e "${YELLOW}Nota: Es posible que necesites cerrar y reabrir la terminal para que los cambios surtan efecto.${NC}"
         fi
-    fi
-
-    # Instalar Composer
-    echo -e "${BLUE}Instalando Composer (ejecutando $installer_file)...${NC}"
-
-    # Convertir rutas para Windows
-    win_installer_path=$(cygpath -w "$installer_file")
-    win_bin_dir=$(cygpath -w "$BIN_DIR")
-
-    # Ejecutar el instalador silenciosamente con los parámetros adecuados
-    cmd //c start //wait "$win_installer_path" --install-dir="$win_bin_dir" --quiet || {
-        echo -e "${RED}Error durante la instalación de Composer${NC}"
-        return 1
-    }
-
-    # Agregar Composer al PATH
-    add_to_path "$BIN_DIR"
-
-    # Verificar instalación
-    if [ -f "$BIN_DIR/composer.phar" ]; then
-        # Mover composer.phar a composer.exe para consistencia
-        mv "$BIN_DIR/composer.phar" "$BIN_DIR/composer.exe"
-    fi
-
-    echo -e "${GREEN}Composer $composer_version instalado correctamente${NC}"
-
-    # Verificar la instalación
-    if command -v composer &> /dev/null; then
-        composer --version
     else
-        echo -e "${YELLOW}Nota: Es posible que necesites cerrar y reabrir la terminal para que los cambios surtan efecto.${NC}"
-        echo -e "${YELLOW}O ejecutar: export PATH=\$PATH:$BIN_DIR${NC}"
+        echo -e "${RED}Error al descargar Composer.${NC}"
+        return 1
     fi
 }
 
@@ -1327,6 +1305,7 @@ install_python() {
     # Para Git Bash, descargar e instalar manualmente
     python_exe="python-$python_version-amd64.exe"
     python_url="https://www.python.org/ftp/python/$python_version/$python_exe"
+    # https://www.python.org/ftp/python/3.13.3/python-3.13.3-amd64.exe
 
     download_file "$python_url" "$python_exe" "$DOWNLOADS_DIR"
 
@@ -1336,12 +1315,12 @@ install_python() {
         "$DOWNLOADS_DIR/$python_exe" /quiet InstallAllUsers=1 PrependPath=1 TargetDir="$BIN_DIR/python/$python_version" AssociateFiles=1 Shortcuts=0 Include_launcher=0 InstallLauncherAllUsers=0
 
         # Agregar Python al PATH
-        add_to_path "$BIN_DIR/python/$python_version"
-        add_to_path "$BIN_DIR/python/$python_version/Scripts"
+        add_to_path "C:\Users\\$USER_HOME_DIR\AppData\Local\Programs\Python\Python313\\"
+        add_to_path "C:\Users\\$USER_HOME_DIR\AppData\Local\Programs\Python\Python313\Scripts\\"
 
-        echo -e "${GREEN}Python $python_version instalado correctamente en $BIN_DIR/python/$python_version${NC}"
+        echo -e "${GREEN}Python $python_version instalado correctamente.${NC}"
     else
-        echo -e "${RED}Error al descargar Python${NC}"
+        echo -e "${RED}Error al descargar Python.${NC}"
         return 1
     fi
 
@@ -1356,8 +1335,8 @@ install_node() {
     # Para Git Bash, descargar e instalar manualmente
     node_zip="node-v$node_version-win-x64.zip"
     node_url="https://nodejs.org/dist/v$node_version/$node_zip"
-    #https://nodejs.org/dist/v22.14.0/node-v22.14.0-x64.msi
-    #https://nodejs.org/dist/v22.14.0/node-v22.14.0-win-x64.zip
+    # https://nodejs.org/dist/v22.15.0/node-v22.15.0-x64.msi
+    # https://nodejs.org/dist/v22.15.0/node-v22.15.0-win-x64.zip
 
     download_file "$node_url" "$node_zip" "$DOWNLOADS_DIR"
 
