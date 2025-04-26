@@ -35,7 +35,7 @@ Automatiza la instalación de **Apache/Nginx, PHP, MariaDB/MySQL, Node.js, Pytho
 1. Clona el repositorio:
 
    ```bash
-   git clone https://github.com/tu-usuario/webserver-setup.git
+   git clone https://github.com/Shoropio/webServer.git
    cd webserver-setup
    ```
 
@@ -60,7 +60,7 @@ Automatiza la instalación de **Apache/Nginx, PHP, MariaDB/MySQL, Node.js, Pytho
 ![Menú Principal](docs/screenshots/main-menu.png)
 ![Resumen Instalación](docs/screenshots/installation-summary.png)
 
-_(Capturas opcionales que puedes agregar)_
+_(Capturas no disponiblea por el momento.)_
 
 ---
 
@@ -104,4 +104,4 @@ Eres libre de usarlo, modificarlo, compartirlo y adaptarlo para tus propios proy
 
 ---
 
-**Hecho con ❤️ por Shoropio Corporation**
+**Hecho con ❤️ por Shoropio Corporation.**
