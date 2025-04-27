@@ -1312,12 +1312,8 @@ install_python() {
 
     if [ -f "$DOWNLOADS_DIR/$python_exe" ]; then
         echo -e "${BLUE}Instalando Python...${NC}"
-        # Instalar Python sin UI, agregar al PATH y registrar como el Python predeterminado
-        "$DOWNLOADS_DIR/$python_exe" /quiet InstallAllUsers=1 PrependPath=1 TargetDir="$BIN_DIR/python/$python_version" AssociateFiles=1 Shortcuts=0 Include_launcher=0 InstallLauncherAllUsers=0
-
-        # Agregar Python al PATH
-        add_to_path "C:\Users\\$USER_HOME_DIR\AppData\Local\Programs\Python\Python313\\"
-        add_to_path "C:\Users\\$USER_HOME_DIR\AppData\Local\Programs\Python\Python313\Scripts\\"
+        # Instalar Python
+        "$DOWNLOADS_DIR/$python_exe"
 
         echo -e "${GREEN}Python $python_version instalado correctamente.${NC}"
     else
