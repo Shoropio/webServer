@@ -265,6 +265,7 @@ generate_ssl_for_default_virtualhost() {
 
             echo -e "${YELLOW}Generando certificado para: $domain.${NC}"
             mkcert -cert-file "$cert_file" -key-file "$key_file" "$domain"
+            # mkcert -cert-file "webserver.local.crt" -key-file "webserver.local.key" webserver.local "*.webserver.local" localhost 127.0.0.1 ::1
 
             if [ $? -eq 0 ]; then
                 echo -e "${GREEN}Certificado creado para $domain.${NC}"
@@ -326,58 +327,6 @@ generate_apache_phpmyadmin_virtualhost() {
 
 generate_nginx_vhost_phpmyadmin() {
     echo -e "${BLUE}Configurando VirtualHost para phpMyAdmin en Nginx...${NC}"
-}
-
-# Función para generar un VirtualHost por defecto
-generate_default_virtualhostBorrar() {
-    if [ "$SELECTED_WEB_SERVER" = "Apache" ]; then
-        echo -e "${BLUE}Configurando VirtualHost para Apache...${NC}"
-        # --- Apache VirtualHost --- #
-        VHOST_CONF="$ETC_DIR/apache2/sites-enabled/webserver.local.conf"
-        VHOST_DIR="$WEB_SERVER_DIR/www/"
-        generate_ssl_for_default_virtualhost
-
-        cat > "$VHOST_CONF" <<EOF
-# Virtual host para $VIRTUAL_HOST_NAME
-# Configuración HTTP (redirección a HTTPS)
-<VirtualHost *:80>
-    ServerName $VIRTUAL_HOST_NAME
-    Redirect permanent / https://$VIRTUAL_HOST_NAME
-</VirtualHost>
-
-# Virtual host para $VIRTUAL_HOST_NAME
-<VirtualHost *:80>
-    ServerName $VIRTUAL_HOST_NAME
-    ServerAlias *.$VIRTUAL_HOST_NAME
-    DocumentRoot "$WEB_SERVER_DIR/www"
-    <Directory "$WEB_SERVER_DIR/www">
-        Options Indexes FollowSymLinks
-        AllowOverride All
-        Require all granted
-    </Directory>
-    ErrorLog "$LOGS_DIR/$VIRTUAL_HOST_NAME-error.log"
-    CustomLog "$LOGS_DIR/$VIRTUAL_HOST_NAME-access.log" combined
-</VirtualHost>
-
-# Configuración HTTPS para $VIRTUAL_HOST_NAME
-<VirtualHost *:443>
-    ServerName $VIRTUAL_HOST_NAME
-    ServerAlias *.$VIRTUAL_HOST_NAME
-    DocumentRoot "$WEB_SERVER_DIR/www"
-    <Directory "$WEB_SERVER_DIR/www">
-        AllowOverride All
-        Require all granted
-    </Directory>
-    ErrorLog "$LOGS_DIR/$VIRTUAL_HOST_NAME-error.log"
-    CustomLog "$LOGS_DIR/$VIRTUAL_HOST_NAME-access.log" combined
-    SSLEngine on
-    SSLCertificateFile $SSL_DIR/$VIRTUAL_HOST_NAME.crt
-    SSLCertificateKeyFile $SSL_DIR/$VIRTUAL_HOST_NAME.key
-</VirtualHost>
-EOF
-    else
-        echo -e "${BLUE}Configurando Virtual Host para Nginx...${NC}"
-    fi
 }
 
 # Función para configurar el Virtual Host
@@ -1776,9 +1725,16 @@ install_apache() {
 
             # Intentar iniciar el servicio Apache
             echo -e "${BLUE}Iniciando el servicio Apache...${NC}"
-                net start Apache2.4
+                # net start Apache2.4
+                "$BIN_DIR/apache/2.4.63/bin/httpd.exe" -k uninstall -n "Apache2.4"
+                sleep 2
+                "$BIN_DIR/apache/2.4.63/bin/httpd.exe" -k install -n "Apache2.4"
+                sleep 2
+                "$BIN_DIR/apache/2.4.63/bin/httpd.exe" -k start -n "Apache2.4"
+                sleep 2
+                "$BIN_DIR/apache/2.4.63/bin/httpd.exe" -v
             if [ $? -ne 0 ]; then
-                echo -e "${YELLOW}Advertencia: No se pudo iniciar el servicio Apache. Verifica el registro de eventos de Windows.${NC}"
+                echo -e "${YELLOW}Advertencia: No se pudo iniciar el servicio Apache.${NC}"
                 # No retornamos un error fatal aquí, ya que la instalación podría haber sido exitosa.
             else
                 echo -e "${GREEN}El servicio Apache se inició correctamente.${NC}"
@@ -1786,9 +1742,9 @@ install_apache() {
 
             # "$BIN_DIR/apache/$apache_version/bin/httpd.exe" -k start -n "Apache2.4" -D FOREGROUND
             # "$BIN_DIR/apache/$apache_version/bin/httpd.exe" -k install -e
-            # "$BIN_DIR/apache/$apache_version/bin/httpd.exe" -k uninstall
+            # "$BIN_DIR/apache/$apache_version/bin/httpd.exe" -k uninstall  httpd.exe -k uninstall -n "Apache2.4" httpd.exe -k install -n "Apache2.4"
             # "$BIN_DIR/apache/$apache_version/bin/httpd.exe" -k start
-            # "$BIN_DIR/apache/$apache_version/bin/httpd.exe" -k stop
+            # "$BIN_DIR/apache/$apache_version/bin/httpd.exe" -k stop httpd.exe-k stop|shutdown
             # "$BIN_DIR/apache/$apache_version/bin/httpd.exe" -k restart
 
             # Guardar versión instalada
@@ -2292,7 +2248,7 @@ while true; do
     read -p "Selecciona una opción (1-20): " choice
 
     case $choice in
-        1) perron ;;
+        1) install_git ;;
         2) install_php ;;
         3) install_python ;;
         4) install_node ;;
