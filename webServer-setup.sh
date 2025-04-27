@@ -1100,48 +1100,49 @@ add_to_path() {
     fi
 }
 
-
 # Función para descargar archivos
 download_file() {
     local url=$1
     local filename=$2
     local dest_dir=$3
 
-    echo -e "${BLUE}↪ Descargando $filename...${NC}"
+    echo -e "${BLUE}Descargando $filename...${NC}"
 
     mkdir -p "$dest_dir" || {
-        echo -e "${RED}✖ Error al crear directorio de descarga: $dest_dir${NC}"
+        echo -e "${RED}Error al crear directorio de descarga: $dest_dir${NC}"
         return 1
     }
 
     if [ ! -f "$dest_dir/$filename" ]; then
         # Intentar primero con wget
         if command -v wget &> /dev/null; then
-            wget -q --show-progress -O "$dest_dir/$filename" "$url" || {
-                echo -e "${YELLOW}⚠️ wget falló. Intentando con curl...${NC}"
+            wget -q --show-progress --timeout=60 --tries=3 --waitretry=5 -O "$dest_dir/$filename" "$url" || {
+            # wget -q --show-progress -O "$dest_dir/$filename" "$url" || {
+                echo -e "${YELLOW}wget falló. Intentando con curl...${NC}"
                 # Si wget falla, intentar con curl
                 if command -v curl &> /dev/null; then
-                    curl -L --output "$dest_dir/$filename" "$url" || {
-                        echo -e "${RED}✖ Error al descargar $filename${NC}"
+                    curl -L --retry 3 --max-time 60 --progress-bar --output "$dest_dir/$filename" "$url" || {
+                    # curl -L --output "$dest_dir/$filename" "$url" || {
+                        echo -e "${RED}Error al descargar $filename.${NC}"
                         return 1
                     }
                 else
-                    echo -e "${RED}✖ No se encontró ni wget ni curl para descargar.${NC}"
+                    echo -e "${RED}No se encontró ni wget ni curl para descargar.${NC}"
                     return 1
                 fi
             }
         elif command -v curl &> /dev/null; then
             curl -L --output "$dest_dir/$filename" "$url" || {
-                echo -e "${RED}✖ Error al descargar $filename${NC}"
+                echo -e "${RED}Error al descargar $filename.${NC}"
                 return 1
             }
         else
-            echo -e "${RED}✖ No se encontró wget ni curl para descargar archivos.${NC}"
+            echo -e "${RED}No se encontró wget ni curl para descargar archivos.${NC}"
             return 1
         fi
-        echo -e "${GREEN}✔ Descarga completada: $filename${NC}"
+        echo -e "${GREEN}Descarga completada: $filename.${NC}"
     else
-        echo -e "${YELLOW}⚠️ El archivo $filename ya existe, omitiendo descarga.${NC}"
+        echo -e "${YELLOW}El archivo $filename ya existe, omitiendo descarga.${NC}"
     fi
 }
 
@@ -1333,26 +1334,20 @@ install_node() {
     node_version=$(get_version "Node.js" $DEFAULT_NODE_VERSION)
 
     # Para Git Bash, descargar e instalar manualmente
-    node_zip="node-v$node_version-win-x64.zip"
-    node_url="https://nodejs.org/dist/v$node_version/$node_zip"
+    node_exe="node-v$node_version-x64.msi"
+    node_url="https://nodejs.org/dist/v$node_version/$node_exe"
     # https://nodejs.org/dist/v22.15.0/node-v22.15.0-x64.msi
-    # https://nodejs.org/dist/v22.15.0/node-v22.15.0-win-x64.zip
 
-    download_file "$node_url" "$node_zip" "$DOWNLOADS_DIR"
+    download_file "$node_url" "$node_exe" "$DOWNLOADS_DIR"
 
-    if [ -f "$DOWNLOADS_DIR/$node_zip" ]; then
-        echo -e "${BLUE}Descomprimiendo Node.js...${NC}"
-        unzip -q "$DOWNLOADS_DIR/$node_zip" -d "$BIN_DIR/nodejs"
+    if [ -f "$DOWNLOADS_DIR/$node_exe" ]; then
+        echo -e "${BLUE}Instalando Node.js...${NC}"
+        # Instalar Node.js
+        "$DOWNLOADS_DIR/$node_exe"
 
-        # Mover a la carpeta con versión específica
-        mv "$BIN_DIR/nodejs/node-v$node_version-win-x64" "$BIN_DIR/nodejs/$node_version"
-
-        # Agregar Node.js al PATH
-        add_to_path "$BIN_DIR/nodejs/$node_version"
-
-        echo -e "${GREEN}Node.js $node_version instalado correctamente en $BIN_DIR/nodejs/$node_version${NC}"
+        echo -e "${GREEN}Node.js $node_version instalado correctamente.${NC}"
     else
-        echo -e "${RED}Error al descargar Node.js${NC}"
+        echo -e "${RED}Error al descargar Node.js.${NC}"
         return 1
     fi
 
