@@ -15,7 +15,8 @@
 # Compatible con: Git Bash (Windows 10+)
 #############################################################
 
-# curl -s https://getcomposer.org/installer | php
+# Variables de configuración
+WEB_SERVER_DIR="C:/webServer"
 
 # Colores para la salida
 RED='\033[0;31m'
@@ -34,21 +35,20 @@ USER_HOME_DIR="$USERNAME"
 # Generar .env si no existe
 generate_default_env() {
     # Asegurar que el directorio base exista antes de crear el .env
-    if [ ! -d "C:/webServer" ]; then
-        mkdir -p "C:/webServer"
+    if [ ! -d "$WEB_SERVER_DIR" ]; then
+        mkdir -p "$WEB_SERVER_DIR"
     fi
 
-    cat > "C:/webServer/webServer.env" <<EOF
+    cat > "$WEB_SERVER_DIR/webServer.env" <<EOF
 # Rutas base
-WEB_SERVER_DIR="C:/webServer"
-DOWNLOADS_DIR="C:/webServer/downloads"
-BIN_DIR="C:/webServer/bin"
-CONFIG_DIR="C:/webServer/config"
-TEMP_DIR="C:/webServer/tmp"
-ETC_DIR="C:/webServer/etc"
-SSL_DIR="C:/webServer/etc/ssl"
-APPS_DIR="C:/webServer/etc/apps"
-LOGS_DIR="C:/webServer/logs"
+DOWNLOADS_DIR="$WEB_SERVER_DIR/downloads"
+BIN_DIR="$WEB_SERVER_DIR/bin"
+CONFIG_DIR="$WEB_SERVER_DIR/config"
+TEMP_DIR="$WEB_SERVER_DIR/tmp"
+ETC_DIR="$WEB_SERVER_DIR/etc"
+SSL_DIR="$WEB_SERVER_DIR/etc/ssl"
+APPS_DIR="$WEB_SERVER_DIR/etc/apps"
+LOGS_DIR="$WEB_SERVER_DIR/logs"
 
 # Variables de versión por defecto
 DEFAULT_PHP_VERSION="8.3.20"
@@ -68,18 +68,40 @@ DEFAULT_GIT_VERSION="2.49.0"
 VIRTUAL_HOST_NAME="webserver.local"
 SSL_ENABLED=true
 EOF
-    echo -e "${GREEN}✓ Archivo webServer.env generado con valores por defecto.${NC}"
+    echo -e "${GREEN}Archivo webServer.env generado con valores por defecto.${NC}"
 }
 
 # Llamar load_env()
 load_env() {
-    if [ ! -f "C:/webServer/webServer.env" ]; then
-        echo -e "${YELLOW}⚠️ Archivo webServer.env no encontrado. Creando con valores por defecto...${NC}"
+    if [ ! -f "$WEB_SERVER_DIR/webServer.env" ]; then
+        echo -e "${YELLOW}Archivo webServer.env no encontrado. Creando con valores por defecto...${NC}"
         generate_default_env
     fi
 
-    export $(grep -v '^#' "C:/webServer/webServer.env" | xargs)
-    echo -e "${GREEN}✓ Variables de entorno cargadas${NC}"
+    export $(grep -v '^#' "$WEB_SERVER_DIR/webServer.env" | xargs)
+    echo -e "${GREEN}Variables de entorno cargadas.${NC}"
+}
+
+# Actualizar o agregar variable en webServer.env
+update_env_var() {
+    local var_name="$1"
+    local new_value="$2"
+    local env_file="$WEB_SERVER_DIR/webServer.env"
+
+    if [ ! -f "$env_file" ]; then
+        echo -e "${YELLOW}Archivo $env_file no encontrado. Creándolo...${NC}"
+        generate_default_env
+    fi
+
+    if grep -q "^$var_name=" "$env_file"; then
+        # Si la variable existe, reemplazar su valor
+        sed -i "s|^$var_name=.*|$var_name=\"$new_value\"|" "$env_file"
+        echo -e "${GREEN}Variable $var_name actualizada en $env_file.${NC}"
+    else
+        # Si no existe, agregarla al final
+        echo "$var_name=\"$new_value\"" >> "$env_file"
+        echo -e "${GREEN}Variable $var_name agregada en $env_file.${NC}"
+    fi
 }
 
 # Llamar al cargar
@@ -87,7 +109,7 @@ load_env
 
 # Función para crear estructura de directorios automáticamente con .gitkeep
 create_directories() {
-    echo -e "${BLUE}↪ Creando estructura de directorios...${NC}"
+    echo -e "${BLUE}Creando estructura de directorios...${NC}"
 
     # Array con directorios principales
     main_dirs=(
@@ -137,7 +159,7 @@ create_directories() {
     # Crear archivos de prueba si es necesario
     create_test_files
 
-    echo -e "${GREEN}✓ Estructura de directorios lista en $WEB_SERVER_DIR${NC}"
+    echo -e "${GREEN}Estructura de directorios lista en $WEB_SERVER_DIR.${NC}"
 }
 
 # Crear directorios
@@ -202,13 +224,13 @@ show_installation_summary() {
     echo ""
 
     if [ "$SSL_ENABLED" = true ]; then
-        echo -e "${GREEN}✓ Certificado SSL configurado para $VIRTUAL_HOST_NAME${NC}"
+        echo -e "${GREEN}Certificado SSL configurado para $VIRTUAL_HOST_NAME${NC}"
         echo -e " - URL segura: ${YELLOW}https://$VIRTUAL_HOST_NAME${NC}"
         echo ""
     fi
 
     if [ -n "$VIRTUAL_HOST_NAME" ]; then
-        echo -e "${GREEN}✓ Virtual Host configurado${NC}"
+        echo -e "${GREEN}Virtual Host configurado${NC}"
         echo -e " - Nombre: ${YELLOW}$VIRTUAL_HOST_NAME${NC}"
         echo -e " - Directorio: ${YELLOW}$WEB_SERVER_DIR/www/$VIRTUAL_HOST_NAME${NC}"
         echo -e " - URL: ${YELLOW}http://$VIRTUAL_HOST_NAME${NC}"
@@ -433,14 +455,14 @@ configure_hosts_file() {
     local hosts_file="C:/Windows/System32/drivers/etc/hosts"
     local entry="127.0.0.1      $VIRTUAL_HOST_NAME      # WebServer"
 
-    echo -e "${BLUE}↪ Configurando el archivo hosts...${NC}"
+    echo -e "${BLUE}Configurando el archivo hosts...${NC}"
 
     # Verificar si ya existe
     if grep -q "$VIRTUAL_HOST_NAME" "$hosts_file"; then
-        echo -e "${YELLOW}⚠️ El dominio $VIRTUAL_HOST_NAME ya existe en el archivo hosts. No se agregará de nuevo.${NC}"
+        echo -e "${YELLOW}El dominio $VIRTUAL_HOST_NAME ya existe en el archivo hosts. No se agregará de nuevo.${NC}"
     else
         echo "$entry" >> "$hosts_file"
-        echo -e "${GREEN}✔ Entrada agregada al archivo hosts.${NC}"
+        echo -e "${GREEN}Entrada agregada al archivo hosts.${NC}"
     fi
 }
 
@@ -876,7 +898,7 @@ $diskUsagePercentage = $totalSpace ? round(($usedSpace / $totalSpace) * 100, 2) 
                         <?php
                         $db_connection = @mysqli_connect('localhost', 'root', '');
                         if ($db_connection) {
-                            echo '<p class="text-success">✓ Conexión a MySQL establecida</p>';
+                            echo '<p class="text-success">Conexión a MySQL establecida</p>';
                             echo '<table class="table table-sm table-hover table-bordered">';
                             echo '<thead class="table-dark"><tr><th>Variable</th><th>Valor</th></tr></thead>';
                             echo '<tbody>';
@@ -1225,12 +1247,11 @@ install_php() {
         sed -i 's/;extension=intl/extension=intl/' "$ini_file"
 
         # Establecer la ruta de extension_dir en php.ini
-        sed -i "s|;extension_dir = \"ext\"|extension_dir = \"C:\\\\webServer\\\\bin\\\\php\\\\$php_version\\\\ext\"|" "$ini_file"
-        sed -i 's|^;session.save_path = "/tmp"|session.save_path = "$WEB_SERVER_DIR/tmp"|' "$ini_file"
+        sed -i "s|;extension_dir = \"ext\"|extension_dir = \"$WEB_SERVER_DIR/bin/php/$php_version/ext\"|" "$ini_file"
+        sed -i "s|^;session.save_path = \"/tmp\"|session.save_path = \"$WEB_SERVER_DIR/tmp\"|" "$ini_file"
 
         # Establecer error_log
-        sed -i 's|^;error_log = php_errors.log|error_log = "$WEB_SERVER_DIR/logs/php_errors.log"|' "$ini_file"
-        sed -i 's|^;error_log = syslog||' "$ini_file"
+        sed -i "s|^;error_log = php_errors.log|error_log = \"$WEB_SERVER_DIR/logs/php_errors.log\"|" "$ini_file"
 
         # Ajustes de rendimiento y límites
         sed -i 's/^max_execution_time = .*/max_execution_time = 36000/' "$ini_file"
@@ -1239,10 +1260,9 @@ install_php() {
         sed -i 's/^post_max_size = .*/post_max_size = 2G/' "$ini_file"
         sed -i 's/^upload_max_filesize = .*/upload_max_filesize = 2G/' "$ini_file"
         sed -i 's/^session.gc_maxlifetime = .*/session.gc_maxlifetime = 36000/' "$ini_file"
-        sed -i 's/^;date.timezone = .*/date.timezone = "America/Costa_Rica"/' "$ini_file"
+        # sed -i 's/^;date.timezone = .*/date.timezone = "America/Costa_Rica"/' "$ini_file"
+        sed -i 's|^;date.timezone =|date.timezone = "America/Costa_Rica"|' "$ini_file"
 
-        # Establecer session.save_path
-        sed -i 's|^;session.save_path = "/tmp"|session.save_path = "$WEB_SERVER_DIR/tmp"|' "$ini_file"
 
         # Guardar versión instalada
         echo "$php_version" > "$CONFIG_DIR/php_version.conf"
@@ -1339,7 +1359,8 @@ install_node() {
     if [ -f "$DOWNLOADS_DIR/$node_exe" ]; then
         echo -e "${BLUE}Instalando Node.js...${NC}"
         # Instalar Node.js
-        "$DOWNLOADS_DIR/$node_exe"
+
+        powershell.exe Start-Process -FilePath "\"$DOWNLOADS_DIR/$node_exe\""
 
         echo -e "${GREEN}Node.js $node_version instalado correctamente.${NC}"
     else
@@ -1347,6 +1368,7 @@ install_node() {
         return 1
     fi
 
+    # Verificar la instalación
     node --version
     npm --version
 }
@@ -1382,48 +1404,58 @@ install_database() {
             unzip -q "$DOWNLOADS_DIR/$mariadb_zip" -d "$BIN_DIR/mariadb"
             mv "$BIN_DIR/mariadb/mariadb-$db_version-winx64" "$BIN_DIR/mariadb/$db_version"
 
-            # Borrar cp "$BIN_DIR/mariadb/$db_version/lib/libmariadb.dll" "$BIN_DIR/php/$INSTALLED_PHP_VERSION/"
-
             # Guardar versión instalada
-            echo "MariaDB" > "$CONFIG_DIR/db_engine.conf"
-            echo "$db_version" > "$CONFIG_DIR/db_engine_version.conf"
+            update_env_var "DEFAULT_DB_ENGINE" "MariaDB"
+            update_env_var "DEFAULT_DB_VERSION" "$db_version"
 
-            # Iniciar y configurar MariaDB en Git Bash (Windows)
+            # Iniciar y configurar MariaDB
             MARIADB_BIN="$BIN_DIR/mariadb/$db_version"
 
             # Crear carpeta data si no existe
             if [ ! -d "$MARIADB_BIN/data" ]; then
-                mkdir -p "$MARIADB_BIN/data"
+                #mkdir -p "$MARIADB_BIN/data"
                 log "Carpeta data creada: $MARIADB_BIN/data"
             fi
 
             # Inicializar base de datos si no existe la carpeta 'data'
             if [ ! -d "$BIN_DIR/mariadb/$db_version/data/mysql" ]; then
                 echo -e "${BLUE}Inicializando la base de datos MariaDB...${NC}"
-                "$BIN_DIR/mariadb/$db_version/bin/mysqld.exe" --initialize-insecure --basedir="$BIN_DIR/mariadb/$db_version" --datadir="$BIN_DIR/mariadb/$db_version/data"
+                # "$BIN_DIR/mariadb/$db_version/bin/mysqld.exe" --initialize-insecure --basedir="$BIN_DIR/mariadb/$db_version" --datadir="$BIN_DIR/mariadb/$db_version/data" --console
+                # "$BIN_DIR/mariadb/$db_version/bin/mariadb-install-db.exe" --datadir="$BIN_DIR/mariadb/$db_version/data" --basedir="$BIN_DIR/mariadb/$db_version" --auth-root-authentication-method=normal
+                # "$BIN_DIR/mariadb/$db_version/bin/mysqld.exe" --basedir="$BIN_DIR/mariadb/$db_version" --datadir="$BIN_DIR/mariadb/$db_version/data" --console
+                # "$BIN_DIR/mariadb/$db_version/bin/mariadb-install-db.exe" --datadir="$BIN_DIR/mariadb/$db_version/data" --service=MariaDB --password=root
+                "$BIN_DIR/mariadb/$db_version/bin/mariadb-install-db.exe" --datadir="$BIN_DIR/mariadb/$db_version/data" --password=root
                 echo -e "${GREEN}Base de datos inicializada sin contraseña para root.${NC}"
             fi
 
             # Crear my.ini si no existe
             create_mariadb_ini "$db_version"
 
+            # Iniciar el servicio
+            echo -e "${BLUE}Iniciando servicio de MariaDB...${NC}"
+
             # Iniciar MariaDB en segundo plano
             echo -e "${BLUE}Iniciando MariaDB...${NC}"
-            "$BIN_DIR/mariadb/$db_version/bin/mysqld.exe" --defaults-file="$BIN_DIR/mariadb/$db_version/my.ini" --console > "$WEB_SERVER_DIR/logs/mariadb.log" 2>&1 &
+            #"$BIN_DIR/mariadb/$db_version/bin/mysqld.exe" --defaults-file="$BIN_DIR/mariadb/$db_version/my.ini" --console > "$WEB_SERVER_DIR/logs/mariadb.log" 2>&1 &
+
+            "$BIN_DIR/mariadb/$db_version/bin/mariadbd.exe" --defaults-file="$BIN_DIR/mariadb/$db_version/my.ini" --console > "$WEB_SERVER_DIR/logs/mariadb.log" 2>&1 &
+
+            sc stop MariaDB
+            sc delete MariaDB
 
             # Confirmar que arrancó correctamente
             sleep 2
-            if pgrep -f "mysqld" > /dev/null; then
+            if pgrep -f "mariadbd" > /dev/null; then
                 echo -e "${GREEN}MariaDB está en ejecución.${NC}"
             else
-                echo -e "${RED}Error al iniciar MariaDB. Verifica el archivo de log: logs/mariadb.log${NC}"
+                echo -e "${RED}Error al iniciar MariaDB. Verifica el archivo de log: logs/mariadb.log.${NC}"
             fi
 
-            add_to_path "$BIN_DIR/mariadb/$db_version/bin"
+            #add_to_path "$BIN_DIR/mariadb/$db_version/bin"
         fi
     fi
 
-    echo -e "${GREEN}$SELECTED_DB_ENGINE $db_version instalado correctamente${NC}"
+    echo -e "${GREEN}$SELECTED_DB_ENGINE $db_version instalado correctamente.${NC}"
 }
 
 # Función para instalar phpMyAdmin
@@ -1825,7 +1857,7 @@ install_nginx() {
         (install_apache --silent) >/dev/null 2>&1
     fi
 
-    echo -e "${GREEN}✓ Nginx $nginx_version instalado correctamente.${NC}"
+    echo -e "${GREEN}Nginx $nginx_version instalado correctamente.${NC}"
     log "Nginx $nginx_version instalado correctamente."
 }
 
@@ -1854,7 +1886,7 @@ uninstall_nginx() {
     rm -f "$CONFIG_DIR/nginx_version.conf"
     rm -f "$CONFIG_DIR/server_engine.conf"
 
-    echo -e "${GREEN}✅ Nginx desinstalado correctamente.${NC}"
+    echo -e "${GREEN}Nginx desinstalado correctamente.${NC}"
     log "Nginx $INSTALLED_NGINX_VERSION desinstalado."
 }
 
@@ -1864,7 +1896,7 @@ start_php_cgi() {
         if [ -f "$CONFIG_DIR/php_version.conf" ]; then
             INSTALLED_PHP_VERSION=$(cat "$CONFIG_DIR/php_version.conf")
         else
-            echo -e "${RED}❌ PHP no está instalado o no se detectó versión.${NC}"
+            echo -e "${RED}PHP no está instalado o no se detectó versión.${NC}"
             return 1
         fi
     fi
@@ -1872,7 +1904,7 @@ start_php_cgi() {
     local php_cgi="$BIN_DIR/php/$INSTALLED_PHP_VERSION/php-cgi.exe"
 
     if [ ! -f "$php_cgi" ]; then
-        echo -e "${RED}❌ No se encontró php-cgi.exe en $php_cgi${NC}"
+        echo -e "${RED}No se encontró php-cgi.exe en $php_cgi${NC}"
         return 1
     fi
 
@@ -1880,9 +1912,9 @@ start_php_cgi() {
     start "$php_cgi" -b 127.0.0.1:9000
 
     if [ $? -eq 0 ]; then
-        echo -e "${GREEN}✅ PHP CGI iniciado correctamente en el puerto 127.0.0.1:9000${NC}"
+        echo -e "${GREEN}PHP CGI iniciado correctamente en el puerto 127.0.0.1:9000${NC}"
     else
-        echo -e "${RED}❌ Error al iniciar PHP CGI.${NC}"
+        echo -e "${RED}Error al iniciar PHP CGI.${NC}"
     fi
 }
 
@@ -2221,7 +2253,7 @@ while true; do
     read -p "Selecciona una opción (1-20): " choice
 
     case $choice in
-        1) install_git ;;
+        1) perron ;;
         2) install_php ;;
         3) install_python ;;
         4) install_node ;;

@@ -90,7 +90,7 @@ if /i "%op%"=="5" (
 :: Detener MariaDB
 if /i "%op%"=="6" (
     echo Deteniendo MariaDB...
-    taskkill /F /IM mysqld.exe >> "%LOGFILE%" 2>&1
+    taskkill /F /IM mariadbd.exe >> "%LOGFILE%" 2>&1
     echo MariaDB detenida. >> "%LOGFILE%"
     pause
     goto MENU
@@ -109,7 +109,7 @@ if /i "%op%"=="7" (
 if /i "%op%"=="8" (
     echo Estado de servicios:
     echo -------------------------
-    tasklist | findstr /I "httpd.exe nginx.exe mysqld.exe php-cgi.exe"
+    tasklist | findstr /I "httpd.exe nginx.exe mysqld.exe mariadbd.exe php-cgi.exe MariaDB"
     echo -------------------------
     echo Log: %LOGFILE%
     pause
@@ -146,6 +146,7 @@ if /i "%op%"=="B" (
     taskkill /F /IM nginx.exe >> "%LOGFILE%" 2>&1
     taskkill /F /IM php-cgi.exe >> "%LOGFILE%" 2>&1
     taskkill /F /IM mysqld.exe >> "%LOGFILE%" 2>&1
+    taskkill /F /IM mariadbd.exe >> "%LOGFILE%" 2>&1
     echo Todos los servicios detenidos. >> "%LOGFILE%"
     pause
     goto MENU
@@ -299,7 +300,7 @@ goto MENU
     exit /b
 
 :startMariaDB
-    tasklist | find /I "mysqld.exe" >nul
+    tasklist | find /I "mariadbd.exe" >nul
     if not errorlevel 1 (
         echo !timestamp! MariaDB ya esta en ejecucion. >> "%LOGFILE%"
         echo MariaDB ya esta en ejecucion.
@@ -307,7 +308,7 @@ goto MENU
     )
     echo Iniciando MariaDB...
     pushd "%BASEDIR%\mariadb\11.4.5\bin"
-    start "" mysqld.exe
+    start "" mariadbd.exe
     popd
     echo !timestamp! MariaDB iniciada. >> "%LOGFILE%"
     exit /b
@@ -317,6 +318,7 @@ goto MENU
     taskkill /F /IM httpd.exe >> "%LOGFILE%" 2>&1
     taskkill /F /IM nginx.exe >> "%LOGFILE%" 2>&1
     taskkill /F /IM mysqld.exe >> "%LOGFILE%" 2>&1
+    taskkill /F /IM mariadbd.exe >> "%LOGFILE%" 2>&1
     timeout /t 2 >nul
     call :startApache
     call :startNginx
@@ -343,7 +345,7 @@ goto MENU
 
 :restartMariaDB
     echo Reiniciando MariaDB...
-    taskkill /F /IM mysqld.exe >> "%LOGFILE%" 2>&1
+    taskkill /F /IM mariadbd.exe >> "%LOGFILE%" 2>&1
     timeout /t 1 >nul
     call :startMariaDB
     echo MariaDB reiniciada. >> "%LOGFILE%"
@@ -422,7 +424,7 @@ goto MENU
 
 :uninstallMariaDB
     echo Desinstalando MariaDB...
-    taskkill /F /IM mysqld.exe >nul 2>&1
+    taskkill /F /IM mariadbd.exe >nul 2>&1
 
     set MARIADB_PATH=%BASEDIR%\mariadb\11.4.5
     if exist "!MARIADB_PATH!" (
