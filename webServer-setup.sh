@@ -117,6 +117,10 @@ create_directories() {
         "$CONFIG_DIR"
         "$TEMP_DIR"
         "$ETC_DIR"
+        "$ETC_DIR/apache2/alias"
+        "$ETC_DIR/apache2/sites-enabled"
+        "$WEB_SERVER_DIR/templates/apache"
+        "$WEB_SERVER_DIR/templates/nginx"
         "$SSL_DIR"
         "$APPS_DIR"
         "$LOGS_DIR"
@@ -142,7 +146,7 @@ create_directories() {
         if [ ! -d "$dir" ]; then
             mkdir -p "$dir"
             touch "$dir/.gitkeep"
-            echo -e "${CYAN}✔ Creado: $dir${NC}"
+            echo -e "${CYAN}Creado: $dir${NC}"
         fi
     done
 
@@ -152,7 +156,7 @@ create_directories() {
         if [ ! -d "$dir" ]; then
             mkdir -p "$dir"
             touch "$dir/.gitkeep"
-            echo -e "${CYAN}✔ Creado: $dir${NC}"
+            echo -e "${CYAN}Creado: $dir${NC}"
         fi
     done
 
@@ -243,15 +247,11 @@ show_installation_summary() {
     echo ""
 }
 
-# función para generar un certificado SSL para el Virtual Host por defecto
+# función para generar un certificado SSL para el VirtualHost por defecto
 generate_ssl_for_default_virtualhost() {
     local domains=(
-        "phpmyadmin.local"
         "webserver.local"
-        "manhattan.local"
-        "laravel.local"
-        "wordpress.local"
-        "symfony.local"
+        "phpmyadmin.local"
     )
 
     if [ "$SSL_ENABLED" = true ]; then
@@ -263,13 +263,13 @@ generate_ssl_for_default_virtualhost() {
             local cert_file="$SSL_DIR/$domain.crt"
             local key_file="$SSL_DIR/$domain.key"
 
-            echo -e "${YELLOW}→ Generando certificado para: $domain${NC}"
+            echo -e "${YELLOW}Generando certificado para: $domain.${NC}"
             mkcert -cert-file "$cert_file" -key-file "$key_file" "$domain"
 
             if [ $? -eq 0 ]; then
-                echo -e "${GREEN}✔ Certificado creado para $domain${NC}"
+                echo -e "${GREEN}Certificado creado para $domain.${NC}"
             else
-                echo -e "${RED}✖ Error al generar certificado para $domain${NC}"
+                echo -e "${RED}Error al generar certificado para $domain.${NC}"
             fi
         done
     else
@@ -277,11 +277,62 @@ generate_ssl_for_default_virtualhost() {
     fi
 }
 
-# Función para generar un virtual host por defecto
-generate_default_virtualhost() {
+# Función para generar un VirtualHost para webServer
+generate_apache_default_virtualhost() {
     if [ "$SELECTED_WEB_SERVER" = "Apache" ]; then
-        echo -e "${BLUE}Configurando Virtual Host para Apache...${NC}"
-        # --- Apache Virtual Host --- #
+        echo -e "${BLUE}Configurando VirtualHost para webServer en Apache...${NC}"
+        VHOST_CONF="$ETC_DIR/apache2/sites-enabled/webserver.local.conf"
+        VHOST_DIR="$WEB_SERVER_DIR/www/"
+        TEMPLATE_FILE="$WEB_SERVER_DIR/templates/apache/default-vhost.tpl"
+
+        # Crear el directorio de configuración si no existe
+        mkdir -p "$(dirname "$VHOST_CONF")"
+
+        # Reemplazar las variables del template
+        sed \
+            -e "s|{{VIRTUAL_HOST_NAME}}|$VIRTUAL_HOST_NAME|g" \
+            -e "s|{{WEB_SERVER_DIR}}|$WEB_SERVER_DIR|g" \
+            -e "s|{{LOGS_DIR}}|$LOGS_DIR|g" \
+            -e "s|{{SSL_DIR}}|$SSL_DIR|g" \
+            "$TEMPLATE_FILE" > "$VHOST_CONF"
+
+    else
+        echo -e "${BLUE}Configurando VirtualHost para webServer en Apache...${NC}"
+    fi
+}
+
+# Función para generar un VirtualHost para phpMyAdmin
+generate_apache_phpmyadmin_virtualhost() {
+    if [ "$SELECTED_WEB_SERVER" = "Apache" ]; then
+        echo -e "${BLUE}Configurando VirtualHost para phpMyAdmin en Apache...${NC}"
+        VHOST_CONF="$ETC_DIR/apache2/sites-enabled/phpmyadmin.local.conf"
+        TEMPLATE_FILE="$WEB_SERVER_DIR/templates/apache/phpmyadmin-vhost.tpl"
+
+        mkdir -p "$(dirname "$VHOST_CONF")"
+
+        # Reemplazar variables del template
+        sed \
+            -e "s|{{VIRTUAL_HOST_NAME}}|$VIRTUAL_HOST_NAME|g" \
+            -e "s|{{WEB_SERVER_DIR}}|$WEB_SERVER_DIR|g" \
+            -e "s|{{LOGS_DIR}}|$LOGS_DIR|g" \
+            -e "s|{{SSL_DIR}}|$SSL_DIR|g" \
+            "$TEMPLATE_FILE" > "$VHOST_CONF"
+
+        echo -e "${GREEN}VirtualHost de phpMyAdmin configurado en:${NC} $VHOST_CONF"
+    else
+        echo -e "${BLUE}Configurando VirtualHost para phpMyAdmin en Apache...${NC}"
+    fi
+}
+
+generate_nginx_vhost_phpmyadmin() {
+    echo -e "${BLUE}Configurando VirtualHost para phpMyAdmin en Nginx...${NC}"
+}
+
+# Función para generar un VirtualHost por defecto
+generate_default_virtualhostBorrar() {
+    if [ "$SELECTED_WEB_SERVER" = "Apache" ]; then
+        echo -e "${BLUE}Configurando VirtualHost para Apache...${NC}"
+        # --- Apache VirtualHost --- #
         VHOST_CONF="$ETC_DIR/apache2/sites-enabled/webserver.local.conf"
         VHOST_DIR="$WEB_SERVER_DIR/www/"
         generate_ssl_for_default_virtualhost
@@ -671,7 +722,6 @@ generate_default_nginx_vhosts() {
     local domains=(
         "webserver.local"
         "phpmyadmin.local"
-        "manhattan.local"
     )
 
     for domain in "${domains[@]}"; do
@@ -705,7 +755,7 @@ generate_default_nginx_vhosts() {
 
             echo "✔️  Generado: $conf_file"
         else
-            echo -e "${RED}✖️  Plantilla no encontrada para $domain ($tpl_file)${NC}"
+            echo -e "${RED} Plantilla no encontrada para $domain ($tpl_file).${NC}"
         fi
     done
 }
@@ -1164,7 +1214,7 @@ download_file() {
         fi
         echo -e "${GREEN}Descarga completada: $filename.${NC}"
     else
-        echo -e "${YELLOW}El archivo $filename ya existe, omitiendo descarga.${NC}"
+        echo -e "${YELLOW}El archivo $filename ya existe.${NC}"
     fi
 }
 
@@ -1629,7 +1679,8 @@ install_apache() {
     echo -e "${BLUE}Instalando Apache...${NC}"
     apache_version=$(get_version "Apache" $DEFAULT_APACHE_VERSION)
     apache_zip="httpd-${apache_version}-250207-win64-VS17.zip"
-    apache_url="https://www.apachelounge.com/download/VS17/binaries/$apache_zip" # https://www.apachelounge.com/download/VS17/binaries/httpd-2.4.63-250207-win64-VS17.zip
+    apache_url="https://www.apachelounge.com/download/VS17/binaries/$apache_zip"
+    # https://www.apachelounge.com/download/VS17/binaries/httpd-2.4.63-250207-win64-VS17.zip
 
     download_file "$apache_url" "$apache_zip" "$DOWNLOADS_DIR"
 
@@ -1682,41 +1733,30 @@ install_apache() {
                 sed -i "s|^#LoadModule $module|LoadModule $module|" "$BIN_DIR/apache/$apache_version/conf/httpd.conf"
             done
 
-            echo -e "${BLUE}Módulos descomentados correctamente en httpd.conf${NC}"
+            echo -e "${BLUE}Módulos descomentados correctamente en httpd.conf.${NC}"
 
             # Configurar PHP
             if [ -n "$INSTALLED_PHP_VERSION" ]; then
                 PHP_DIR_WIN="$BIN_DIR/php/$INSTALLED_PHP_VERSION"
                 CONF_FILE="$BIN_DIR/apache/$apache_version/conf/httpd.conf"
 
-                # Crear directorio sites-enabled
-                mkdir -p "$ETC_DIR/apache2/sites-enabled"
-                # mkdir -p "$ETC_DIR/apache2/sites-available"
-
-                # Crear directorio alias
-                mkdir -p "$ETC_DIR/apache2/alias"
-
-                create_mod_php "$INSTALLED_PHP_VERSION"
+                generate_mod_php_conf "$INSTALLED_PHP_VERSION"
 
                 echo "# Configuración" >> "$CONF_FILE"
                 echo "IncludeOptional \"$ETC_DIR/apache2/sites-enabled/*.conf\"" >> "$CONF_FILE"
-                # echo "IncludeOptional \"$ETC_DIR/apache2/sites-available/*.conf\"" >> "$CONF_FILE"
                 echo "IncludeOptional \"$ETC_DIR/apache2/alias/*.conf\"" >> "$CONF_FILE"
                 echo "Include \"$ETC_DIR/apache2/httpd-ssl.conf\"" >> "$CONF_FILE"
                 echo "Include \"$ETC_DIR/apache2/mod_php.conf\"" >> "$CONF_FILE"
 
-                if [ ! -f "$ETC_DIR/apache2/httpd-ssl.conf" ]; then
-                    echo "" >> "$ETC_DIR/apache2/httpd-ssl.conf"
-                    log "El archivo httpd-ssl.conf creado."
-                    # return
-                fi
-
                 # Crear el archivo con la configuración SSL
-                create_httpd_ssl
+                generate_httpd_ssl_conf
 
                 # Crear el archivo host predeterminado
                 #configure_virtual_host unattended=true
-                generate_default_virtualhost
+
+                generate_apache_default_virtualhost
+                generate_apache_phpmyadmin_virtualhost
+                generate_ssl_for_default_virtualhost
 
                 # Asegurar que index.php esté en DirectoryIndex
                 sed -i "s|^[[:space:]]*DirectoryIndex .*|    DirectoryIndex index.php index.html|" "$CONF_FILE"
@@ -1782,7 +1822,7 @@ install_nginx() {
     # Llamamos a la función para procesar los argumentos
     local unattended=$(parse_arguments "$@")
 
-    echo "→ Instalar Nginx con unattended=$unattended"
+    echo "Instalar Nginx con unattended=$unattended"
 
     if [[ "$unattended" == true ]]; then
         nginx_version="${DEFAULT_NGINX_VERSION}"
@@ -1824,11 +1864,11 @@ install_nginx() {
         "$BIN_DIR/nginx/$nginx_version/nginx.exe" -t -p "$BIN_DIR/nginx/$nginx_version"
 
         if [ $? -eq 0 ]; then
-            echo -e "${GREEN}✅ Configuración válida. Iniciando Nginx...${NC}"
+            echo -e "${GREEN}Configuración válida. Iniciando Nginx...${NC}"
             start "$BIN_DIR/nginx/$nginx_version/nginx.exe"
             start_php_cgi
         else
-            echo -e "${RED}❌ Error en la configuración de Nginx. No se iniciará.${NC}"
+            echo -e "${RED}Error en la configuración de Nginx. No se iniciará.${NC}"
             return 1
         fi
 
@@ -1959,7 +1999,7 @@ log() {
     local timestamp=$(date +"%Y-%m-%d %H:%M:%S")
     # mkdir -p "$WEB_SERVER_DIR/logs"
     echo "[$timestamp] $message" >> "$WEB_SERVER_DIR/logs/setup.log"
-    echo -e "${YELLOW}→ $message${NC}"
+    echo -e "${YELLOW}$message.${NC}"
 }
 
 # Función mejorada para descargar archivos con fallback
@@ -2172,11 +2212,11 @@ http {
 }
 EOF
 
-    echo -e "${GREEN}✅ nginx.conf generado exitosamente.${NC}"
+    echo -e "${GREEN}Archivo nginx.conf generado exitosamente.${NC}"
 }
 
 # Función para crear el archivo httpd-ssl.conf para SSL
-create_httpd_ssl() {
+generate_httpd_ssl_conf() {
     local httpd_ssl_path="$ETC_DIR/apache2/httpd-ssl.conf"
 
     rm -f "$httpd_ssl_path"
@@ -2194,18 +2234,17 @@ SSLProxyProtocol all -SSLv3
 
 SSLSessionCache "shmcb:logs/ssl_scache(512000)"
 SSLSessionCacheTimeout  300
-
 EOF
-    log "Archivo mod_php.conf creado para PHP en $httpd_ssl_path"
+    log "Archivo httpd-ssl.conf creado para PHP en $httpd_ssl_path."
 }
 
 # Función para crear archivo mod_php.conf para PHP
-create_mod_php() {
+generate_mod_php_conf() {
     local php_version=$1
     local mod_php_path="$ETC_DIR/apache2/mod_php.conf"
 
     if [ -f "$mod_php_path" ]; then
-        log "El archivo mod_php.conf ya existe. Saltando creación."
+        log "El archivo mod_php.conf ya existe."
         return
     fi
 
@@ -2215,7 +2254,7 @@ LoadModule php_module "$BIN_DIR/php/$php_version/php8apache2_4.dll"
 PHPIniDir "$BIN_DIR/php/$php_version"
 AddHandler application/x-httpd-php .php
 EOF
-    log "Archivo mod_php.conf creado para PHP en $mod_php_path"
+    log "Archivo mod_php.conf creado para PHP en $mod_php_path."
 }
 
 # Función para crear archivo my.ini para MariaDB
@@ -2224,7 +2263,7 @@ create_mariadb_ini() {
     ini_path="$BIN_DIR/mariadb/$db_version/my.ini"
 
     if [ -f "$ini_path" ]; then
-        log "El archivo my.ini ya existe. Saltando creación."
+        log "El archivo my.ini ya existe."
         return
     fi
 
