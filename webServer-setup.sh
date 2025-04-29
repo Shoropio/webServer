@@ -18,6 +18,39 @@
 # Variables de configuración
 WEB_SERVER_DIR="C:/webServer"
 
+# Rutas base
+DOWNLOADS_DIR="$WEB_SERVER_DIR/downloads"
+BIN_DIR="$WEB_SERVER_DIR/bin"
+TEMP_DIR="$WEB_SERVER_DIR/tmp"
+ETC_DIR="$WEB_SERVER_DIR/etc"
+SSL_DIR="$WEB_SERVER_DIR/etc/ssl"
+APPS_DIR="$WEB_SERVER_DIR/etc/apps"
+LOGS_DIR="$WEB_SERVER_DIR/logs"
+
+# Variables de versión por defecto
+DEFAULT_PHP_VERSION="8.3.20"
+DEFAULT_PYTHON_VERSION="3.13.3"
+DEFAULT_NODE_VERSION="22.15.0"
+
+# DB Engine
+DEFAULT_DB_ENGINE="MariaDB" # or MySQL
+DEFAULT_DB_VERSION="11.4.5" # or MySQL 8.0.42
+
+# phpMyAdmin
+DEFAULT_PHPMYADMIN_VERSION="5.2.2"
+
+# Server Engine
+DEFAULT_WEB_SERVER_ENGINE="Apache"
+DEFAULT_WEB_SERVER_ENGINE_VERSION="2.4.63"
+DEFAULT_APACHE_VERSION="2.4.63"
+DEFAULT_NGINX_VERSION="1.26.3" # 1.27.5
+DEFAULT_COMPOSER_VERSION="2.8.8"
+DEFAULT_GIT_VERSION="2.49.0"
+
+# Variables adicionales
+VIRTUAL_HOST_NAME="webserver.local"
+SSL_ENABLED=true
+
 # Colores para la salida
 RED='\033[0;31m'
 GREEN='\033[0;32m'
@@ -40,33 +73,26 @@ generate_default_env() {
     fi
 
     cat > "$WEB_SERVER_DIR/webServer.env" <<EOF
-# Rutas base
-DOWNLOADS_DIR="$WEB_SERVER_DIR/downloads"
-BIN_DIR="$WEB_SERVER_DIR/bin"
-CONFIG_DIR="$WEB_SERVER_DIR/config"
-TEMP_DIR="$WEB_SERVER_DIR/tmp"
-ETC_DIR="$WEB_SERVER_DIR/etc"
-SSL_DIR="$WEB_SERVER_DIR/etc/ssl"
-APPS_DIR="$WEB_SERVER_DIR/etc/apps"
-LOGS_DIR="$WEB_SERVER_DIR/logs"
+# DB Engine
+INSTALLED_DB_ENGINE=$DEFAULT_DB_ENGINE
+INSTALLED_DB_ENGINE_VERSION=$DEFAULT_DB_VERSION
+INSTALLED_DB_ENGINE_DIR=""
 
-# Variables de versión por defecto
-DEFAULT_PHP_VERSION="8.3.20"
-DEFAULT_PYTHON_VERSION="3.13.3"
-DEFAULT_NODE_VERSION="22.15.0"
-# DEFAULT_DB_ENGINE="MySQL"
-# DEFAULT_DB_VERSION="8.0.42"
-DEFAULT_DB_ENGINE="MariaDB"
-DEFAULT_DB_VERSION="11.4.5"
-DEFAULT_PHPMYADMIN_VERSION="5.2.2"
-DEFAULT_APACHE_VERSION="2.4.63"
-DEFAULT_NGINX_VERSION="1.26.3" # 1.27.5
-DEFAULT_COMPOSER_VERSION="2.8.8"
-DEFAULT_GIT_VERSION="2.49.0"
+# PHP
+INSTALLED_PHP_VERSION=$DEFAULT_PHP_VERSION
+INSTALLED_PHP_DIR=""
 
-# Variables adicionales
-VIRTUAL_HOST_NAME="webserver.local"
-SSL_ENABLED=true
+# NodeJs
+INSTALLED_NODE_VERSION=$DEFAULT_NODE_VERSION
+
+# Nginx
+INSTALLED_NGINX_VERSION=$DEFAULT_NGINX_VERSION
+INSTALLED_NGINX_DIR=""
+
+# Server Engine
+INSTALLED_WEB_SERVER_ENGINE=$DEFAULT_WEB_SERVER_ENGINE
+INSTALLED_WEB_SERVER_ENGINE_VERSION=$DEFAULT_WEB_SERVER_ENGINE_VERSION
+INSTALLED_WEB_SERVER_ENGINE_DIR=""
 EOF
     echo -e "${GREEN}Archivo webServer.env generado con valores por defecto.${NC}"
 }
@@ -114,7 +140,6 @@ create_directories() {
     # Array con directorios principales
     main_dirs=(
         "$WEB_SERVER_DIR"
-        "$CONFIG_DIR"
         "$TEMP_DIR"
         "$ETC_DIR"
         "$ETC_DIR/apache2/alias"
@@ -137,8 +162,6 @@ create_directories() {
         "nginx"
         "mysql"
         "mariadb"
-        "nodejs"
-        "python"
     )
 
     # Crear los directorios principales si no existen
@@ -169,14 +192,6 @@ create_directories() {
 # Crear directorios
 create_directories
 
-# Variables para almacenar las elecciones del usuario
-SELECTED_DB_ENGINE=$DEFAULT_DB_ENGINE
-INSTALLED_DB_VERSION=$DEFAULT_DB_VERSION
-SELECTED_WEB_SERVER=$(<"$CONFIG_DIR/server_engine.conf")
-INSTALLED_PHP_VERSION=$DEFAULT_PHP_VERSION
-INSTALLED_NODE_VERSION=$DEFAULT_NODE_VERSION
-INSTALLED_NGINX_VERSION=$DEFAULT_NGINX_VERSION
-
 # Función para mostrar resumen de instalación
 show_installation_summary() {
     clear
@@ -198,10 +213,10 @@ show_installation_summary() {
         echo ""
     fi
 
-    if [ -n "$SELECTED_DB_ENGINE" ]; then
+    if [ -n "$INSTALLED_DB_ENGINE" ]; then
         echo -e "${BLUE}Base de Datos:${NC}"
-        echo -e " - Motor: ${YELLOW}$SELECTED_DB_ENGINE${NC}"
-        if [ "$SELECTED_DB_ENGINE" = "MySQL" ]; then
+        echo -e " - Motor: ${YELLOW}$INSTALLED_DB_ENGINE${NC}"
+        if [ "$INSTALLED_DB_ENGINE" = "MySQL" ]; then
             echo -e " - Ruta: ${YELLOW}$BIN_DIR/mysql/$DEFAULT_DB_VERSION${NC}"
         else
             echo -e " - Ruta: ${YELLOW}$BIN_DIR/mariadb/$DEFAULT_DB_VERSION${NC}"
@@ -209,10 +224,10 @@ show_installation_summary() {
         echo ""
     fi
 
-    if [ -n "$SELECTED_WEB_SERVER" ]; then
+    if [ -n "$INSTALLED_WEB_SERVER_ENGINE" ]; then
         echo -e "${BLUE}Servidor Web:${NC}"
-        echo -e " - Tipo: ${YELLOW}$SELECTED_WEB_SERVER${NC}"
-        if [ "$SELECTED_WEB_SERVER" = "Apache" ]; then
+        echo -e " - Tipo: ${YELLOW}$INSTALLED_WEB_SERVER_ENGINE${NC}"
+        if [ "$INSTALLED_WEB_SERVER_ENGINE" = "Apache" ]; then
             echo -e " - Ruta: ${YELLOW}$BIN_DIR/apache/$DEFAULT_APACHE_VERSION${NC}"
             echo -e " - Archivo de configuración: ${YELLOW}$BIN_DIR/apache/$DEFAULT_APACHE_VERSION/conf/httpd.conf${NC}"
         else
@@ -223,8 +238,8 @@ show_installation_summary() {
     fi
 
     echo -e "${BLUE}phpMyAdmin:${NC}"
-    echo -e " - Ruta: ${YELLOW}$WEB_SERVER_DIR/phpmyadmin${NC}"
-    echo -e " - URL: ${YELLOW}http://localhost/phpmyadmin${NC}"
+    echo -e " - Ruta: ${YELLOW}$ETC/apps/phpmyadmin${NC}"
+    echo -e " - URL: ${YELLOW}https://phpmyadmin.local${NC}"
     echo ""
 
     if [ "$SSL_ENABLED" = true ]; then
@@ -234,9 +249,9 @@ show_installation_summary() {
     fi
 
     if [ -n "$VIRTUAL_HOST_NAME" ]; then
-        echo -e "${GREEN}Virtual Host configurado${NC}"
+        echo -e "${GREEN}VirtualHost configurado${NC}"
         echo -e " - Nombre: ${YELLOW}$VIRTUAL_HOST_NAME${NC}"
-        echo -e " - Directorio: ${YELLOW}$WEB_SERVER_DIR/www/$VIRTUAL_HOST_NAME${NC}"
+        echo -e " - Directorio: ${YELLOW}$WEB_SERVER_DIR/www${NC}"
         echo -e " - URL: ${YELLOW}http://$VIRTUAL_HOST_NAME${NC}"
         if [ "$SSL_ENABLED" = true ]; then
             echo -e " - URL segura: ${YELLOW}https://$VIRTUAL_HOST_NAME${NC}"
@@ -280,7 +295,7 @@ generate_ssl_for_default_virtualhost() {
 
 # Función para generar un VirtualHost para webServer
 generate_apache_default_virtualhost() {
-    if [ "$SELECTED_WEB_SERVER" = "Apache" ]; then
+    if [ "$INSTALLED_WEB_SERVER_ENGINE" = "Apache" ]; then
         echo -e "${BLUE}Configurando VirtualHost para webServer en Apache...${NC}"
         VHOST_CONF="$ETC_DIR/apache2/sites-enabled/webserver.local.conf"
         VHOST_DIR="$WEB_SERVER_DIR/www/"
@@ -297,6 +312,7 @@ generate_apache_default_virtualhost() {
             -e "s|{{SSL_DIR}}|$SSL_DIR|g" \
             "$TEMPLATE_FILE" > "$VHOST_CONF"
 
+        echo -e "${GREEN}VirtualHost de webServer configurado en:${NC} $VHOST_CONF"
     else
         echo -e "${BLUE}Configurando VirtualHost para webServer en Apache...${NC}"
     fi
@@ -304,7 +320,7 @@ generate_apache_default_virtualhost() {
 
 # Función para generar un VirtualHost para phpMyAdmin
 generate_apache_phpmyadmin_virtualhost() {
-    if [ "$SELECTED_WEB_SERVER" = "Apache" ]; then
+    if [ "$INSTALLED_WEB_SERVER_ENGINE" = "Apache" ]; then
         echo -e "${BLUE}Configurando VirtualHost para phpMyAdmin en Apache...${NC}"
         VHOST_CONF="$ETC_DIR/apache2/sites-enabled/phpmyadmin.local.conf"
         TEMPLATE_FILE="$WEB_SERVER_DIR/templates/apache/phpmyadmin-vhost.tpl"
@@ -340,7 +356,7 @@ configure_virtual_host() {
         mkdir -p "$VHOST_DIR"
         echo "<?php echo '<h1>Bienvenido a $VIRTUAL_HOST_NAME</h1>'; ?>" > "$VHOST_DIR/index.php"
 
-        if [ "$SELECTED_WEB_SERVER" = "Apache" ]; then
+        if [ "$INSTALLED_WEB_SERVER_ENGINE" = "Apache" ]; then
             # --- Apache Virtual Host ---
             APACHE_VHOST_CONF="$ETC_DIR/apache2/sites-enabled/$VIRTUAL_HOST_NAME.conf"
             mkdir -p "$(dirname "$APACHE_VHOST_CONF")"
@@ -484,6 +500,18 @@ configure_ssl() {
         # Para Windows (Git Bash), usaremos mkcert para SSL local
         echo -e "${BLUE}Configurando SSL local para $VIRTUAL_HOST_NAME con mkcert...${NC}"
 
+        # if ! command -v choco &> /dev/null; then
+            # echo -e "${RED}Chocolatey no está instalado.${NC}"
+            # if command -v winget &> /dev/null; then
+                # echo -e "${YELLOW}Intentando con winget...${NC}"
+                # winget install -e --id Microsoft.Winget.Cli --source msstore # Asegúrate que winget este instalado
+                # winget install -y mkcert
+            # else
+                # echo -e "${RED}Chocolatey no está instalado. Instala mkcert manualmente.${NC}"
+                # return 1
+            # fi
+        # fi
+
         # Instalar mkcert si no está instalado
         if ! command -v mkcert &> /dev/null; then
                 install_mkcert
@@ -503,7 +531,7 @@ configure_ssl() {
         mkcert -cert-file "$SSL_DIR/$VIRTUAL_HOST_NAME.crt" -key-file "$SSL_DIR/$VIRTUAL_HOST_NAME.key" "$VIRTUAL_HOST_NAME"
 
         # Configurar el servidor web con SSL
-        if [ "$SELECTED_WEB_SERVER" = "Apache" ]; then
+        if [ "$INSTALLED_WEB_SERVER_ENGINE" = "Apache" ]; then
             # Configurar Apache para SSL
             echo -e "${BLUE}Configurando Apache para $VIRTUAL_HOST_NAME...${NC}"
 
@@ -550,13 +578,13 @@ configure_ssl() {
 EOF
 
             # Reiniciar
-            if [ "$SELECTED_WEB_SERVER" = "Apache" ]; then
+            if [ "$INSTALLED_WEB_SERVER_ENGINE" = "Apache" ]; then
                 read -p "¿Deseas reiniciar Apache ahora? (s/n, por defecto s): " restart_apache
                 if [[ "$restart_apache" =~ ^[SsYy]$ ]]; then
                     "$BIN_DIR/apache/$DEFAULT_APACHE_VERSION/bin/httpd.exe" -k restart
                     echo -e "${GREEN}Apache reiniciado.${NC}"
                 fi
-            elif [ "$SELECTED_WEB_SERVER" = "Nginx" ]; then
+            elif [ "$INSTALLED_WEB_SERVER_ENGINE" = "Nginx" ]; then
                 read -p "¿Deseas reiniciar Nginx ahora? (s/n, por defecto s): " restart_nginx
                 if [[ "$restart_nginx" =~ ^[SsYy]$ ]]; then
                     taskkill /IM nginx.exe /F
@@ -702,7 +730,7 @@ generate_default_nginx_vhosts() {
             sed "s|{{INDEX}}|$default_index|g" \
             > "$conf_file"
 
-            echo "✔️  Generado: $conf_file"
+            echo "Generado: $conf_file."
         else
             echo -e "${RED} Plantilla no encontrada para $domain ($tpl_file).${NC}"
         fi
@@ -766,310 +794,46 @@ install_git() {
     git --version
 }
 
-# Función para crear archivos de prueba
+# Función para reemplazar variables en una plantilla y generar el archivo final
+render_template() {
+    local template_file="$1"
+    local output_file="$2"
+
+    # Leemos la plantilla, reemplazamos variables conocidas
+    sed \
+        -e "s|{{YEAR}}|$(date +%Y)|g" \
+        -e "s|{{DOCROOT}}|${WEB_SERVER_DIR}/www|g" \
+        "$template_file" > "$output_file"
+}
+
+# Función para crear archivos de prueba usando plantillas
 create_test_files() {
+    echo -e "${BLUE}Creando archivos de prueba en $WEB_SERVER_DIR/www...${NC}"
+
+    mkdir -p "$WEB_SERVER_DIR/www"
+
+    # Renderizar y copiar las plantillas
+    render_template "./plantillas/index.php.tpl" "$WEB_SERVER_DIR/www/index.php"
+    render_template "./plantillas/phpinfo.php.tpl" "$WEB_SERVER_DIR/www/phpinfo.php"
+
+    echo -e "${GREEN}Archivos de prueba creados en $WEB_SERVER_DIR/www/${NC}"
+    echo -e "${YELLOW}Accede a http://localhost/index.php para ver la información del servidor${NC}"
+    echo -e "${YELLOW}Accede a http://localhost/phpinfo.php para ver phpinfo() completo${NC}"
+}
+
+
+# Función para crear archivos de prueba
+create_test_fildes() {
     echo -e "${BLUE}Creando archivos de prueba en $WEB_SERVER_DIR/www...${NC}"
 
     # Archivo index.php con información del servidor
     cat > "$WEB_SERVER_DIR/www/index.php" << 'EOF'
-<?php
-// Configuración para evitar errores de visualización
-error_reporting(E_ALL);
-ini_set('display_errors', 1);
-
-// Función para verificar extensiones
-function check_extension($ext) {
-    return extension_loaded($ext) ?
-        '<span class="text-success">✓ Activada</span>' :
-        '<span class="text-danger">✗ No activada</span>';
-}
-
-// Función para formatear bytes a un formato legible
-function format_size($bytes) {
-    if ($bytes >= 1073741824) {
-        return round($bytes / 1073741824, 2) . ' GB';
-    } elseif ($bytes >= 1048576) {
-        return round($bytes / 1048576, 2) . ' MB';
-    } elseif ($bytes >= 1024) {
-        return round($bytes / 1024, 2) . ' KB';
-    } else {
-        return $bytes . ' bytes';
-    }
-}
-
-$docRoot = $_SERVER['DOCUMENT_ROOT'] ?? '/';
-$totalSpace = @disk_total_space($docRoot);
-$freeSpace = @disk_free_space($docRoot);
-$usedSpace = $totalSpace - $freeSpace;
-$diskUsagePercentage = $totalSpace ? round(($usedSpace / $totalSpace) * 100, 2) : 'N/A';
-
-?>
-<!DOCTYPE html>
-<html lang="es">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>WebServer | Shoropio</title>
-    <!-- Bootstrap CSS -->
-    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.5/dist/css/bootstrap.min.css" rel="stylesheet" integrity="sha384-SgOJa3DmI69IUzQ2PVdRZhwQ+dy64/BUtbMJw1MZ8t5HZApcHrRKUc4W0kG879m7" crossorigin="anonymous" />
-    <!-- <link rel="apple-touch-icon" href="/docs/5.3/assets/img/favicons/apple-touch-icon.png" sizes="180x180" />
-    <link rel="icon" href="/docs/5.3/assets/img/favicons/favicon-32x32.png" sizes="32x32" type="image/png"/>
-    <link rel="icon" href="/docs/5.3/assets/img/favicons/favicon-16x16.png" sizes="16x16" type="image/png" />
-    <link rel="manifest" href="/docs/5.3/assets/img/favicons/manifest.json" />
-    <link rel="mask-icon" href="/docs/5.3/assets/img/favicons/safari-pinned-tab.svg" color="#712cf9">
-    <link rel="icon" href="/docs/5.3/assets/img/favicons/favicon.ico" /> -->
-    <meta name="theme-color" content="#712cf9" />
-    <!-- Styles -->
-    <style>.card{border-radius:0!important}.navbar-toggler{border-radius:0!important}.btn{border-radius:0!important}.card-header:first-child{border-radius:0!important}</style>
-</head>
-<body>
-    <nav class="navbar navbar-expand-lg navbar-dark bg-dark">
-        <div class="container">
-            <a class="navbar-brand" href="#">WebServer</a>
-            <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarNav" aria-controls="navbarNav" aria-expanded="false" aria-label="Toggle navigation">
-                <span class="navbar-toggler-icon"></span>
-            </button>
-            <div class="collapse navbar-collapse" id="navbarNav">
-                <ul class="navbar-nav">
-                    <li class="nav-item">
-                        <a class="nav-link active" aria-current="page" href="#server-info">Información del servidor</a>
-                    </li>
-                    <li class="nav-item">
-                        <a class="nav-link" href="#database-info">Base de datos</a>
-                    </li>
-                    <li class="nav-item">
-                        <a class="nav-link" href="#php-extensions">Extensiones PHP</a>
-                    </li>
-                    <li class="nav-item">
-                        <a class="nav-link" href="#other-tools">Otras Herramientas</a>
-                    </li>
-                </ul>
-            </div>
-        </div>
-    </nav>
-
-    <div class="container py-4 text-center">
-        <div class="row row-cols-1 row-cols-md-2 g-4">
-            <div class="col" id="server-info">
-                <div class="card shadow-sm">
-                <div class="card-header bg-dark">
-                    <h5 class="card-title text-light" style="margin-bottom:0px;">Información del servidor</h5>
-                </div>
-                    <div class="card-body">
-                        <table class="table table-sm table-hover">
-                            <thead>
-                                <tr>
-                                    <th>Variable</th>
-                                    <th>Valor</th>
-                                </tr>
-                            </thead>
-                            <tbody>
-                                <tr>
-                                    <td>Servidor</td>
-                                    <td><?= $_SERVER['SERVER_SOFTWARE'] ?? 'N/A' ?></td>
-                                </tr>
-                                <tr>
-                                    <td>PHP</td>
-                                    <td><?= phpversion() ?></td>
-                                </tr>
-                                <tr>
-                                    <td>SAPI</td>
-                                    <td><?= php_sapi_name() ?></td>
-                                </tr>
-                                <tr>
-                                    <td>OS</td>
-                                    <td><?= php_uname() ?></td>
-                                </tr>
-                                <tr>
-                                    <td>Root</td>
-                                    <td><?= $_SERVER['DOCUMENT_ROOT'] ?? 'N/A' ?></td>
-                                </tr>
-                            </tbody>
-                        </table>
-                    </div>
-                </div>
-            </div>
-
-            <div class="col" id="database-info">
-                <div class="card shadow-sm">
-                    <div class="card-body">
-                        <h5 class="card-title">Base de datos</h5>
-                        <?php
-                        $db_connection = @mysqli_connect('localhost', 'root', '');
-                        if ($db_connection) {
-                            echo '<p class="text-success">Conexión a MySQL establecida</p>';
-                            echo '<table class="table table-sm table-hover table-bordered">';
-                            echo '<thead class="table-dark"><tr><th>Variable</th><th>Valor</th></tr></thead>';
-                            echo '<tbody>';
-                            echo '<tr><td>Versión de MySQL</td><td>' . mysqli_get_server_info($db_connection) . '</td></tr>';
-                            echo '<tr><td>Host info</td><td>' . mysqli_get_host_info($db_connection) . '</td></tr>';
-                            echo '<tr><td>Protocolo</td><td>' . mysqli_get_proto_info($db_connection) . '</td></tr>';
-                            echo '</tbody>';
-                            echo '</table>';
-                            mysqli_close($db_connection);
-                        } else {
-                            echo '<p class="text-danger">✗ No se pudo conectar a MySQL: ' . (mysqli_connect_error() ?? 'Error desconocido') . '</p>';
-                            echo '<p class="text-muted">Verifica que el servicio MySQL esté corriendo y las credenciales sean correctas.</p>';
-                        }
-                        ?>
-                    </div>
-                </div>
-            </div>
-
-            <div class="col" id="php-info">
-                <div class="card shadow-sm">
-                    <div class="card-body">
-                        <h5 class="card-title">Configuración de PHP</h5>
-                        <table class="table table-sm table-hover">
-                            <tbody>
-                                <tr>
-                                    <th>`php.ini` Path</th>
-                                    <td><?= php_ini_loaded_file() ?></td>
-                                </tr>
-                                <tr>
-                                    <th>`memory_limit`</th>
-                                    <td><?= ini_get('memory_limit') ?></td>
-                                </tr>
-                                <tr>
-                                    <th>`upload_max_filesize`</th>
-                                    <td><?= ini_get('upload_max_filesize') ?></td>
-                                </tr>
-                                <tr>
-                                    <th>`post_max_size`</th>
-                                    <td><?= ini_get('post_max_size') ?></td>
-                                </tr>
-                                <tr>
-                                    <th>`max_execution_time`</th>
-                                    <td><?= ini_get('max_execution_time') ?> segundos</td>
-                                </tr>
-                                <tr>
-                                    <th>`display_errors`</th>
-                                    <td><?= ini_get('display_errors') ? '<span class="text-success">Activado</span>' : '<span class="text-danger">Desactivado</span>' ?></td>
-                                </tr>
-                                <tr>
-                                    <th>`error_reporting`</th>
-                                    <td><?= ini_get('error_reporting') ?></td>
-                                </tr>
-                            </tbody>
-                        </table>
-                    </div>
-                </div>
-            </div>
-
-            <div class="col" id="disk-space">
-                <div class="card shadow-sm">
-                    <div class="card-body">
-                        <h5 class="card-title">Espacio en disco (<?= $docRoot ?>)</h5>
-                        <table class="table table-sm table-hover">
-                            <tbody>
-                                <tr>
-                                    <th>Espacio Total</th>
-                                    <td><?= $totalSpace ? format_size($totalSpace) : 'N/A' ?></td>
-                                </tr>
-                                <tr>
-                                    <th>Espacio Usado</th>
-                                    <td><?= $totalSpace ? format_size($usedSpace) . ' (' . $diskUsagePercentage . '%)' : 'N/A' ?></td>
-                                </tr>
-                                <tr>
-                                    <th>Espacio Libre</th>
-                                    <td><?= $freeSpace ? format_size($freeSpace) : 'N/A' ?></td>
-                                </tr>
-                            </tbody>
-                        </table>
-                    </div>
-                </div>
-            </div>
-
-            <div class="col" id="php-extensions">
-                <div class="card shadow-sm">
-                    <div class="card-body">
-                        <h5 class="card-title">Extensiones PHP</h5>
-                        <table class="table table-sm table-hover">
-                            <thead class="table-dark">
-                                <tr>
-                                    <th>Extensión</th>
-                                    <th>Estado</th>
-                                </tr>
-                            </thead>
-                            <tbody>
-                                <tr><td>MySQLi</td><td><?= check_extension('mysqli') ?></td></tr>
-                                <tr><td>PDO MySQL</td><td><?= check_extension('pdo_mysql') ?></td></tr>
-                                <tr><td>cURL</td><td><?= check_extension('curl') ?></td></tr>
-                                <tr><td>GD</td><td><?= check_extension('gd') ?></td></tr>
-                                <tr><td>OpenSSL</td><td><?= check_extension('openssl') ?></td></tr>
-                                <tr><td>MBString</td><td><?= check_extension('mbstring') ?></td></tr>
-                                <tr><td>XML</td><td><?= check_extension('xml') ?></td></tr>
-                                <tr><td>JSON</td><td><?= check_extension('json') ?></td></tr>
-                                <tr><td>ZIP</td><td><?= check_extension('zip') ?></td></tr>
-
-                                <tr><td>Intl</td><td><?= check_extension('intl') ?></td></tr>
-                                <tr><td>BCMath</td><td><?= check_extension('bcmath') ?></td></tr>
-                                <tr><td>SOAP</td><td><?= check_extension('soap') ?></td></tr>
-                                <tr><td>Iconv</td><td><?= check_extension('iconv') ?></td></tr>
-                                <tr><td>Fileinfo</td><td><?= check_extension('fileinfo') ?></td></tr>
-                                <tr><td>Tokenizer</td><td><?= check_extension('tokenizer') ?></td></tr>
-
-                                <tr><td>EXIF</td><td><?= check_extension('exif') ?></td></tr>
-                                <tr><td>Imagick</td><td><?= check_extension('imagick') ?></td></tr>
-
-                                <tr><td>Redis</td><td><?= check_extension('redis') ?></td></tr>
-                                <tr><td>Memcached</td><td><?= check_extension('memcached') ?></td></tr>
-
-                                <tr><td>SimpleXML</td><td><?= check_extension('simplexml') ?></td></tr>
-                                <tr><td>DOM</td><td><?= check_extension('dom') ?></td></tr>
-                                <tr><td>Readline</td><td><?= check_extension('readline') ?></td></tr>
-                                <tr><td>FTP</td><td><?= check_extension('ftp') ?></td></tr>
-                                <tr><td>LDAP</td><td><?= check_extension('ldap') ?></td></tr>
-                                <tr><td>Xdebug</td><td><?= check_extension('xdebug') ?></td></tr>
-                            </tbody>
-                        </table>
-                    </div>
-                </div>
-            </div>
-
-            <div class="col" id="other-tools">
-                <div class="card shadow-sm">
-                    <div class="card-body">
-                        <h5 class="card-title">Otras herramientas</h5>
-                        <table class="table table-sm table-hover">
-                            <tbody>
-                                <tr>
-                                    <td>phpMyAdmin</td>
-                                    <td><a href="https://phpmyadmin.local" class="btn btn-primary btn-sm" target="_blank">Acceder a phpMyAdmin</a></td>
-                                </tr>
-                                <tr>
-                                    <td>PHP Info</td>
-                                    <td><a href="/phpinfo.php" class="btn btn-primary btn-sm" target="_blank">Ver phpinfo() completo</a></td>
-                                </tr>
-                            </tbody>
-                        </table>
-                    </div>
-                </div>
-            </div>
-        </div>
-    </div>
-
-    <footer class="bg-dark py-3 mt-4 border-top">
-        <div class="container text-center">
-            <p class="text-light small" style="margin-bottom: 0px; color:white;">WebServer - Shoropio Corporation <?= date('Y') ?></p>
-        </div>
-    </footer>
-
-    <!-- Bootstrap JS -->
-    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.5/dist/js/bootstrap.bundle.min.js" integrity="sha384-k6d4wzSIapyDyv1kpU366/PK5hCdSbCRGRCMv+eplOQJWyd1fbcAu9OCUj5zNLiq" crossorigin="anonymous"></script>
-</body>
-</html>
+rrrrr
 EOF
 
     # Archivo phpinfo.php
     cat > "$WEB_SERVER_DIR/www/phpinfo.php" << 'EOF'
-<?php
-// Mostrar toda la información, por defecto INFO_ALL
-phpinfo();
-
-// Mostrar únicamente información de los módulos
-// phpinfo(INFO_MODULES);
-?>
+gg
 EOF
 
     echo -e "${GREEN}Archivos de prueba creados en $WEB_SERVER_DIR/www/${NC}"
@@ -1245,6 +1009,8 @@ install_php() {
         sed -i 's/;extension=zip/extension=zip/' "$ini_file"
         sed -i 's/;extension=intl/extension=intl/' "$ini_file"
 
+        # enable_dl = Off
+
         # Establecer la ruta de extension_dir en php.ini
         sed -i "s|;extension_dir = \"ext\"|extension_dir = \"$WEB_SERVER_DIR/bin/php/$php_version/ext\"|" "$ini_file"
         sed -i "s|^;session.save_path = \"/tmp\"|session.save_path = \"$WEB_SERVER_DIR/tmp\"|" "$ini_file"
@@ -1262,9 +1028,9 @@ install_php() {
         # sed -i 's/^;date.timezone = .*/date.timezone = "America/Costa_Rica"/' "$ini_file"
         sed -i 's|^;date.timezone =|date.timezone = "America/Costa_Rica"|' "$ini_file"
 
-
         # Guardar versión instalada
-        echo "$php_version" > "$CONFIG_DIR/php_version.conf"
+        update_env_var "INSTALLED_PHP_VERSION" "$php_version"
+        update_env_var "INSTALLED_PHP_DIR" "$BIN_DIR/php/$php_version/"
 
         echo -e "${GREEN}PHP $php_version instalado correctamente en $BIN_DIR/php/$php_version.${NC}"
     else
@@ -1372,15 +1138,75 @@ install_node() {
     npm --version
 }
 
+# Función para instalar MariaDB
+install_database_prueba() {
+    db_version=$(get_version "$INSTALLED_DB_ENGINE" $DEFAULT_DB_VERSION)
+    mariadb_zip="mariadb-$db_version-winx64.zip"
+    mariadb_url="https://downloads.mariadb.org/interstitial/mariadb-$db_version/winx64-packages/$mariadb_zip"
+
+    # Descargar MariaDB
+    # download_file "$mariadb_url" "$mariadb_zip" "$DOWNLOADS_DIR"
+
+    # Descomprimir
+    echo -e "${BLUE}Descomprimiendo MariaDB...${NC}"
+    unzip -q "$DOWNLOADS_DIR/$mariadb_zip" -d "$BIN_DIR/mariadb"
+    mv "$BIN_DIR/mariadb/mariadb-$db_version-winx64" "$BIN_DIR/mariadb/$db_version"
+
+    # --- Inicializar la base de datos ---
+    echo -e "${BLUE}Inicializando MariaDB...${NC}"
+    # "$BIN_DIR/mariadb/$db_version/bin/mysql_install_db.exe" --datadir="$BIN_DIR/mariadb/$db_version/data" --password=root --service=MariaDB
+    "$BIN_DIR/mariadb/$db_version/bin/mariadb-install-db.exe" --datadir="$BIN_DIR/mariadb/$db_version/data" --password=root --service=MariaDB
+
+    if ! "$BIN_DIR/mariadb/$db_version/bin/mariadb-install-db.exe" --datadir="$BIN_DIR/mariadb/$db_version/data" --password=root --service=MariaDB; then
+        echo -e "${RED}Error al inicializar la base de datos de MariaDB. Revisa los logs si existen.${NC}"
+        #return 1
+    fi
+    echo -e "${GREEN}Inicialización completada.${NC}"
+
+    # Agregar al PATH
+    #add_to_path "$mariadb_bin"
+
+    # --- Instalar y Iniciar el servicio ---
+    echo -e "${BLUE}Instalando y iniciando el servicio de MariaDB...${NC}"
+    "$BIN_DIR/mariadb/$db_version/bin/mariadbd.exe" --install MariaDB --console > "$WEB_SERVER_DIR/logs/mariadb.log" 2>&1 &
+    if ! "$BIN_DIR/mariadb/$db_version/bin/mariadbd.exe" --install MariaDB; then
+        echo -e "${RED}Error al instalar el servicio de MariaDB.${NC}"
+        #return 1
+    fi
+
+    if ! net start MariaDB; then
+        echo -e "${RED}Error al iniciar el servicio de MariaDB. Verifica que el servicio se haya instalado correctamente.${NC}"
+        #return 1
+    fi
+    echo -e "${GREEN}Servicio de MariaDB instalado e iniciado.${NC}"
+
+    # --- Verificar estado ---
+    sleep 2
+    if sc query MariaDB | grep "RUNNING"; then
+        echo -e "${GREEN}MariaDB se ha instalado y está en ejecución.${NC}"
+        echo -e "Usuario: root | Contraseña: root (¡cambiala después por seguridad!)${NC}"
+    else
+        echo -e "${RED}Error: El servicio de MariaDB no se está ejecutando. Revisa los logs del servicio de Windows.${NC}"
+        #return 1
+    fi
+
+    # Instalar MariaDB
+    echo -e "${BLUE}Instalando MariaDB $DEFAULT_DB_VERSION...${NC}"
+    #install_mariadb "$DEFAULT_DB_VERSION"
+
+    echo -e "${GREEN}¡Instalación completada!${NC}"
+}
+
+
 # Función para instalar la base de datos
 install_database() {
     echo -e "${BLUE}Instalando Base de Datos...${NC}"
     read -p "¿Qué motor de base de datos prefieres? (MySQL/MariaDB, por defecto $DEFAULT_DB_ENGINE): " db_engine
-    SELECTED_DB_ENGINE=${db_engine:-$DEFAULT_DB_ENGINE}
+    INSTALLED_DB_ENGINE=${db_engine:-$DEFAULT_DB_ENGINE}
 
-    db_version=$(get_version "$SELECTED_DB_ENGINE" $DEFAULT_DB_VERSION)
+    db_version=$(get_version "$INSTALLED_DB_ENGINE" $DEFAULT_DB_VERSION)
 
-    if [ "$SELECTED_DB_ENGINE" = "MySQL" ]; then
+    if [ "$INSTALLED_DB_ENGINE" = "MySQL" ]; then
         mysql_zip="mysql-$db_version-winx64.zip"
         mysql_url="https://dev.mysql.com/get/Downloads/MySQL-$db_version/$mysql_zip"
 
@@ -1417,6 +1243,9 @@ install_database() {
             fi
 
             # Inicializar base de datos si no existe la carpeta 'data'
+
+            #--defaults-extra-file=my.ini
+
             if [ ! -d "$BIN_DIR/mariadb/$db_version/data/mysql" ]; then
                 echo -e "${BLUE}Inicializando la base de datos MariaDB...${NC}"
                 # "$BIN_DIR/mariadb/$db_version/bin/mysqld.exe" --initialize-insecure --basedir="$BIN_DIR/mariadb/$db_version" --datadir="$BIN_DIR/mariadb/$db_version/data" --console
@@ -1428,7 +1257,7 @@ install_database() {
             fi
 
             # Crear my.ini si no existe
-            create_mariadb_ini "$db_version"
+            #create_mariadb_ini "$db_version"
 
             # Iniciar el servicio
             echo -e "${BLUE}Iniciando servicio de MariaDB...${NC}"
@@ -1436,25 +1265,26 @@ install_database() {
             # Iniciar MariaDB en segundo plano
             echo -e "${BLUE}Iniciando MariaDB...${NC}"
             #"$BIN_DIR/mariadb/$db_version/bin/mysqld.exe" --defaults-file="$BIN_DIR/mariadb/$db_version/my.ini" --console > "$WEB_SERVER_DIR/logs/mariadb.log" 2>&1 &
-
-            "$BIN_DIR/mariadb/$db_version/bin/mariadbd.exe" --defaults-file="$BIN_DIR/mariadb/$db_version/my.ini" --console > "$WEB_SERVER_DIR/logs/mariadb.log" 2>&1 &
-
-            sc stop MariaDB
-            sc delete MariaDB
+            "$BIN_DIR/mariadb/$db_version/bin/mariadbd.exe" --install MariaDB --console > "$WEB_SERVER_DIR/logs/mariadb.log" 2>&1 &
+            #"$BIN_DIR/mariadb/$db_version/bin/mariadbd.exe" --install MariaDB --defaults-file="$BIN_DIR/mariadb/$db_version/my.ini" --console > "$WEB_SERVER_DIR/logs/mariadb.log" 2>&1 &
+            #"$BIN_DIR/mariadb/$db_version/bin/mysqld.exe" --install
+            #"$BIN_DIR/mariadb/$db_version/bin/mysqld.exe" --install MariaDB --defaults-file="$BIN_DIR/mariadb/$db_version/my.ini" --datadir="$BIN_DIR/mariadb/$db_version/data"
+            #sc stop MariaDB
+            #sc delete MariaDB
 
             # Confirmar que arrancó correctamente
             sleep 2
-            if pgrep -f "mariadbd" > /dev/null; then
-                echo -e "${GREEN}MariaDB está en ejecución.${NC}"
-            else
-                echo -e "${RED}Error al iniciar MariaDB. Verifica el archivo de log: logs/mariadb.log.${NC}"
-            fi
+            # if pgrep -f "mariadbd" > /dev/null; then
+                # echo -e "${GREEN}MariaDB está en ejecución.${NC}"
+            # else
+                # echo -e "${RED}Error al iniciar MariaDB. Verifica el archivo de log: logs/mariadb.log.${NC}"
+            # fi
 
             #add_to_path "$BIN_DIR/mariadb/$db_version/bin"
         fi
     fi
 
-    echo -e "${GREEN}$SELECTED_DB_ENGINE $db_version instalado correctamente.${NC}"
+    echo -e "${GREEN}$INSTALLED_DB_ENGINE $db_version instalado correctamente.${NC}"
 }
 
 # Función para instalar phpMyAdmin
@@ -1490,7 +1320,7 @@ install_phpmyadmin() {
         #fi
 
         echo -e "${GREEN}phpMyAdmin $phpmyadmin_version instalado correctamente en $BIN_DIR/phpmyadmin${NC}"
-        echo -e "${YELLOW}Enlace simbólico creado en $WEB_SERVER_DIR/phpmyadmin para acceso web${NC}"
+        echo -e "${YELLOW}phpMyAdmin esta disponible para acceso a la web en: https://phpmyadmin.local${NC}"
     else
         echo -e "${RED}Error al descargar phpMyAdmin${NC}"
         return 1
@@ -1535,7 +1365,7 @@ configure_phpmyadmins() {
     fi
 
     # Configuración específica para el servidor web
-    if [ "$SELECTED_WEB_SERVER" = "Apache" ]; then
+    if [ "$INSTALLED_WEB_SERVER_ENGINE" = "Apache" ]; then
         local apache_conf="$BIN_DIR/apache/$DEFAULT_APACHE_VERSION/conf/httpd.conf"
         if ! grep -q "phpmyadmin" "$apache_conf"; then
             echo "Alias /phpmyadmin \"$APPS_DIR/phpmyadmin\"" >> "$apache_conf"
@@ -1560,7 +1390,7 @@ configure_phpmyadmins() {
         fi
     fi
 
-    echo -e "${GREEN}phpMyAdmin configurado correctamente para $SELECTED_DB_ENGINE y $SELECTED_WEB_SERVER${NC}"
+    echo -e "${GREEN}phpMyAdmin configurado correctamente para $INSTALLED_DB_ENGINE y $INSTALLED_WEB_SERVER_ENGINE${NC}"
     echo -e "${YELLOW}Acceso: http://localhost/phpmyadmin${NC}"
 }
 
@@ -1576,7 +1406,7 @@ configure_phpmyadmin() {
     fi
 
     # Configurar para MySQL/MariaDB
-    if [ "$SELECTED_DB_ENGINE" = "MySQL" ]; then
+    if [ "$INSTALLED_DB_ENGINE" = "MySQL" ]; then
         sed -i "s/\$cfg\['Servers'\]\[\$i\]\['host'\] = '.*';/\$cfg\['Servers'\]\[\$i\]\['host'\] = 'localhost';/" "$APPS_DIR/phpmyadmin/config.inc.php"
         sed -i "s/\$cfg\['Servers'\]\[\$i\]\['auth_type'\] = '.*';/\$cfg\['Servers'\]\[\$i\]\['auth_type'\] = 'cookie';/" "$APPS_DIR/phpmyadmin/config.inc.php"
     else
@@ -1605,7 +1435,7 @@ configure_phpmyadmin() {
     fi
 
     # Configurar para Apache o Nginx
-    if [ "$SELECTED_WEB_SERVER" = "Apache" ]; then
+    if [ "$INSTALLED_WEB_SERVER_ENGINE" = "Apache" ]; then
         echo "Alias /phpmyadmin \"$APPS_DIR/phpmyadmin\"" >> "$BIN_DIR/apache/$DEFAULT_APACHE_VERSION/conf/httpd.conf"
         echo "<Directory \"$APPS_DIR/phpmyadmin\">" >> "$BIN_DIR/apache/$DEFAULT_APACHE_VERSION/conf/httpd.conf"
         echo "    Options Indexes FollowSymLinks" >> "$BIN_DIR/apache/$DEFAULT_APACHE_VERSION/conf/httpd.conf"
@@ -1620,7 +1450,7 @@ configure_phpmyadmin() {
         echo "}" >> "$BIN_DIR/nginx/$DEFAULT_NGINX_VERSION/conf/nginx.conf"
     fi
 
-    echo -e "${GREEN}phpMyAdmin configurado para $SELECTED_DB_ENGINE y $SELECTED_WEB_SERVER${NC}"
+    echo -e "${GREEN}phpMyAdmin configurado para $INSTALLED_DB_ENGINE y $INSTALLED_WEB_SERVER_ENGINE${NC}"
 }
 
 # Función para instalar Apache
@@ -1644,6 +1474,33 @@ install_apache() {
         if [ -d "$APACHE_TEMP_DIR/Apache24" ]; then
             # Mover el contenido a la ubicación final
             mkdir -p "$BIN_DIR/apache/$apache_version"
+
+            # Verificar si el directorio de destino ya existe
+            if [ -d "$BIN_DIR/apache/$apache_version" ]; then
+                echo -e "${YELLOW}Advertencia: El directorio $BIN_DIR/apache/$apache_version ya existe.${NC}"
+                read -p "¿Deseas sobrescribirlo? (s/n): " overwrite_choice
+                case "$overwrite_choice" in
+                    [sS])
+                        echo -e "${BLUE}Eliminando el directorio existente...${NC}"
+                        rm -rf "$BIN_DIR/apache/$apache_version"
+                        mkdir -p "$BIN_DIR/apache/$apache_version"
+                        ;;
+                    [nN])
+                        echo -e "${RED}Instalación cancelada por el usuario.${NC}"
+                        rm -rf "$APACHE_TEMP_DIR"
+                        return 1
+                        ;;
+                    *)
+                        echo -e "${RED}Opción inválida. Instalación cancelada.${NC}"
+                        rm -rf "$APACHE_TEMP_DIR"
+                        return 1
+                        ;;
+                esac
+            else
+                mkdir -p "$BIN_DIR/apache/$apache_version"
+            fi
+
+            # Mover los archivos descomprimidos
             mv "$APACHE_TEMP_DIR/Apache24/"* "$BIN_DIR/apache/$apache_version/"
 
             # Agregar Apache al PATH
@@ -1652,19 +1509,20 @@ install_apache() {
             # Configuración crítica de Apache
             APACHE_DIR_WIN=$(cygpath -w "$BIN_DIR/apache/$apache_version" | sed 's/\\/\\\\/g')
 
-            # Configurar httpd.conf
-            sed -i "s|^Define SRVROOT .*|Define SRVROOT \"$APACHE_DIR_WIN\"|" "$BIN_DIR/apache/$apache_version/conf/httpd.conf"
-            sed -i "s|^ServerRoot .*|ServerRoot \"$APACHE_DIR_WIN\"|" "$BIN_DIR/apache/$apache_version/conf/httpd.conf"
-            sed -i "s|^DocumentRoot .*|DocumentRoot \"$(echo "$WEB_SERVER_DIR" | sed 's/\//\\\\/g')\\\\www\"|" "$BIN_DIR/apache/$apache_version/conf/httpd.conf"
-            sed -i "/^DocumentRoot \"$(echo "$WEB_SERVER_DIR" | sed 's/\//\\\\/g')\\\\www\"$/{n;s|^<Directory \".*|<Directory \"$(echo "$WEB_SERVER_DIR" | sed 's/\//\\\\/g')\\\\www\">|}" "$BIN_DIR/apache/$apache_version/conf/httpd.conf"
-            sed -i "s|^ErrorLog \"logs/error.log\"$|ErrorLog \"$(echo "$WEB_SERVER_DIR" | sed 's/\//\\\\/g')\\\\logs\\\\apache_error.log\"|" "$BIN_DIR/apache/$apache_version/conf/httpd.conf"
-            sed -i "s|^LogLevel warn$|LogLevel error|" "$BIN_DIR/apache/$apache_version/conf/httpd.conf"
+            #
+            httpd_conf_file="$BIN_DIR/apache/$apache_version/conf/httpd.conf"
 
-            # Agregar ServerName
-            if grep -q "^#ServerName www.example.com:80" "$BIN_DIR/apache/$apache_version/conf/httpd.conf"; then
-                echo -e "${BLUE}Agregando ServerName al httpd.conf...${NC}"
-                sed -i "/^#ServerName www.example.com:80/a ServerName webServer" "$BIN_DIR/apache/$apache_version/conf/httpd.conf"
-            fi
+            #
+            generate_custom_httpd_conf
+
+            # Configurar httpd.conf
+            sed -i "s|^Define SRVROOT .*|Define SRVROOT \"$APACHE_DIR_WIN\"|" "$httpd_conf_file"
+            sed -i "s|^ServerRoot .*|ServerRoot \"$APACHE_DIR_WIN\"|" "$httpd_conf_file"
+            sed -i "s|^DocumentRoot .*|DocumentRoot \"$(echo "$WEB_SERVER_DIR" | sed 's/\//\\\\/g')\\\\www\"|" "$httpd_conf_file"
+            sed -i "/^DocumentRoot \"$(echo "$WEB_SERVER_DIR" | sed 's/\//\\\\/g')\\\\www\"$/{n;s|^<Directory \".*|<Directory \"$(echo "$WEB_SERVER_DIR" | sed 's/\//\\\\/g')\\\\www\">|}" "$httpd_conf_file"
+            sed -i "s|^ErrorLog \"logs/error.log\"$|ErrorLog \"$(echo "$WEB_SERVER_DIR" | sed 's/\//\\\\/g')\\\\logs\\\\apache_error.log\"|" "$httpd_conf_file"
+            sed -i "s|^LogLevel warn$|LogLevel error|" "$httpd_conf_file"
+            sed -i "/^#ServerName www.example.com:80/a ServerName webServer" "$httpd_conf_file"
 
             # Descomentar módulos necesarios
             modules_to_enable=(
@@ -1686,16 +1544,14 @@ install_apache() {
 
             # Configurar PHP
             if [ -n "$INSTALLED_PHP_VERSION" ]; then
-                PHP_DIR_WIN="$BIN_DIR/php/$INSTALLED_PHP_VERSION"
-                CONF_FILE="$BIN_DIR/apache/$apache_version/conf/httpd.conf"
-
+                #
                 generate_mod_php_conf "$INSTALLED_PHP_VERSION"
 
-                echo "# Configuración" >> "$CONF_FILE"
-                echo "IncludeOptional \"$ETC_DIR/apache2/sites-enabled/*.conf\"" >> "$CONF_FILE"
-                echo "IncludeOptional \"$ETC_DIR/apache2/alias/*.conf\"" >> "$CONF_FILE"
-                echo "Include \"$ETC_DIR/apache2/httpd-ssl.conf\"" >> "$CONF_FILE"
-                echo "Include \"$ETC_DIR/apache2/mod_php.conf\"" >> "$CONF_FILE"
+                echo "# Configuración" >> "$httpd_conf_file"
+                echo "IncludeOptional \"$ETC_DIR/apache2/sites-enabled/*.conf\"" >> "$httpd_conf_file"
+                echo "IncludeOptional \"$ETC_DIR/apache2/alias/*.conf\"" >> "$httpd_conf_file"
+                echo "Include \"$ETC_DIR/apache2/httpd-ssl.conf\"" >> "$httpd_conf_file"
+                echo "Include \"$ETC_DIR/apache2/mod_php.conf\"" >> "$httpd_conf_file"
 
                 # Crear el archivo con la configuración SSL
                 generate_httpd_ssl_conf
@@ -1708,48 +1564,52 @@ install_apache() {
                 generate_ssl_for_default_virtualhost
 
                 # Asegurar que index.php esté en DirectoryIndex
-                sed -i "s|^[[:space:]]*DirectoryIndex .*|    DirectoryIndex index.php index.html|" "$CONF_FILE"
+                sed -i "s|^[[:space:]]*DirectoryIndex .*|    DirectoryIndex index.php index.html|" "$httpd_conf_file"
             fi
 
             # Verificar si el servicio Apache2.4 está instalado
             if sc query Apache2.4 | grep -q "Apache2.4"; then
-                echo -e "${GREEN}El servicio de Apache2.4 ya está instalado.${NC}"
+                echo -e "${GREEN}El servicio Apache2.4 ya está instalado.${NC}"
+
+                # Intentar iniciar el servicio si no está corriendo
+                if sc query Apache2.4 | grep -q "RUNNING"; then
+                    echo -e "${GREEN}El servicio Apache2.4 ya se está ejecutando.${NC}"
+                else
+                    echo -e "${BLUE}Iniciando el servicio Apache2.4...${NC}"
+                    net start Apache2.4
+                    if [ $? -ne 0 ]; then
+                        echo -e "${RED}Error: No se pudo iniciar el servicio Apache2.4.${NC}"
+                        return 1
+                    else
+                        echo -e "${GREEN}El servicio Apache2.4 se inició correctamente.${NC}"
+                    fi
+                fi
+
             else
-                echo -e "${BLUE}Instalando Apache como servicio...${NC}"
+                echo -e "${BLUE}Instalando el servicio Apache2.4...${NC}"
                 "$BIN_DIR/apache/$apache_version/bin/httpd.exe" -k install -n "Apache2.4" -d "$BIN_DIR/apache/$apache_version" -e
                 if [ $? -ne 0 ]; then
-                    echo -e "${RED}Error: Falló la instalación del servicio Apache. Verifica los permisos y la configuración.${NC}"
+                    echo -e "${RED}Error: Falló la instalación del servicio Apache2.4.${NC}"
                     return 1
+                fi
+
+                echo -e "${BLUE}Iniciando el servicio Apache2.4...${NC}"
+                net start Apache2.4
+                if [ $? -ne 0 ]; then
+                    echo -e "${RED}Error: No se pudo iniciar el servicio Apache2.4.${NC}"
+                    return 1
+                else
+                    echo -e "${GREEN}El servicio Apache2.4 se instaló e inició correctamente.${NC}"
                 fi
             fi
 
-            # Intentar iniciar el servicio Apache
-            echo -e "${BLUE}Iniciando el servicio Apache...${NC}"
-                # net start Apache2.4
-                "$BIN_DIR/apache/2.4.63/bin/httpd.exe" -k uninstall -n "Apache2.4"
-                sleep 2
-                "$BIN_DIR/apache/2.4.63/bin/httpd.exe" -k install -n "Apache2.4"
-                sleep 2
-                "$BIN_DIR/apache/2.4.63/bin/httpd.exe" -k start -n "Apache2.4"
-                sleep 2
-                "$BIN_DIR/apache/2.4.63/bin/httpd.exe" -v
-            if [ $? -ne 0 ]; then
-                echo -e "${YELLOW}Advertencia: No se pudo iniciar el servicio Apache.${NC}"
-                # No retornamos un error fatal aquí, ya que la instalación podría haber sido exitosa.
-            else
-                echo -e "${GREEN}El servicio Apache se inició correctamente.${NC}"
-            fi
-
-            # "$BIN_DIR/apache/$apache_version/bin/httpd.exe" -k start -n "Apache2.4" -D FOREGROUND
-            # "$BIN_DIR/apache/$apache_version/bin/httpd.exe" -k install -e
-            # "$BIN_DIR/apache/$apache_version/bin/httpd.exe" -k uninstall  httpd.exe -k uninstall -n "Apache2.4" httpd.exe -k install -n "Apache2.4"
-            # "$BIN_DIR/apache/$apache_version/bin/httpd.exe" -k start
-            # "$BIN_DIR/apache/$apache_version/bin/httpd.exe" -k stop httpd.exe-k stop|shutdown
-            # "$BIN_DIR/apache/$apache_version/bin/httpd.exe" -k restart
+            # Mostrar la versión de Apache
+            "$BIN_DIR/apache/$apache_version/bin/httpd.exe" -v
 
             # Guardar versión instalada
-            echo "$apache_version" > "$CONFIG_DIR/apache_version.conf"
-            echo "Apache" > "$CONFIG_DIR/server_engine.conf"
+            update_env_var "INSTALLED_WEB_SERVER_ENGINE" "Apache"
+            update_env_var "INSTALLED_WEB_SERVER_ENGINE_VERSION" "$apache_version"
+            update_env_var "INSTALLED_WEB_SERVER_ENGINE_DIR" "$BIN_DIR/apache/$apache_version/"
         else
             echo -e "${RED}Error: No se encontró el directorio Apache24 en el archivo descargado.${NC}"
             return 1
@@ -1762,13 +1622,19 @@ install_apache() {
         return 1
     fi
 
+    # Borrar
     # Instalar Nginx en segundo plano si no está instalado
-    if [ ! -f "$CONFIG_DIR/nginx_version.conf" ]; then
-        echo -e "${YELLOW}Instalando Nginx para futuras configuraciones (Vhots/SSL)...${NC}"
-        install_nginx unattended=true
-    fi
+    # if [ ! -f "$CONFIG_DIR/nginx_version.conf" ]; then
+        # echo -e "${YELLOW}Instalando Nginx para futuras configuraciones (Vhots/SSL)...${NC}"
+        # install_nginx unattended=true
+    # fi
 
     echo -e "${GREEN}Apache $apache_version instalado correctamente en $BIN_DIR/apache/$apache_version${NC}"
+}
+
+#
+generate_custom_httpd_conf() {
+    echo -e "${GREEN}Archivo httpd.conf configurado correctamente.${NC}"
 }
 
 # Función para instalar Nginx
@@ -1816,7 +1682,7 @@ install_nginx() {
         echo -e "${GREEN}phpMyAdmin disponible en http://localhost/phpmyadmin${NC}"
 
         # Validar la configuración antes de iniciar
-        echo -e "${BLUE}🧪 Validando configuración de Nginx...${NC}"
+        echo -e "${BLUE}Validando configuración de Nginx...${NC}"
         "$BIN_DIR/nginx/$nginx_version/nginx.exe" -t -p "$BIN_DIR/nginx/$nginx_version"
 
         if [ $? -eq 0 ]; then
@@ -1838,20 +1704,24 @@ install_nginx() {
             echo -e "${YELLOW}Advertencia: No se pudo iniciar Nginx. Verifica la configuración y los logs.${NC}"
         fi
 
-        # Guardar configuración
-        echo "$nginx_version" > "$CONFIG_DIR/nginx_version.conf"
-        echo "Nginx" > "$CONFIG_DIR/server_engine.conf"
+        # Guardar versión instalada
+        update_env_var "INSTALLED_WEB_SERVER_ENGINE" "Nginx"
+        update_env_var "INSTALLED_WEB_SERVER_ENGINE_VERSION" "$nginx_version"
+        update_env_var "INSTALLED_WEB_SERVER_ENGINE_DIR" "$BIN_DIR/nginx/$nginx_version/"
 
+        update_env_var "INSTALLED_NGINX_VERSION" "$nginx_version"
+        update_env_var "INSTALLED_NGINX_DIR" "$BIN_DIR/nginx/$nginx_version/"
     else
         echo -e "${RED}Error al descargar Nginx.${NC}"
         return 1
     fi
 
+    # Borrar
     # Instalar Apache en segundo plano si no está instalado
-    if [ ! -f "$CONFIG_DIR/apache_version.conf" ]; then
-        echo -e "${YELLOW}Instalando Apache en segundo plano para futuras configuraciones...${NC}"
-        (install_apache --silent) >/dev/null 2>&1
-    fi
+    # if [ ! -f "$CONFIG_DIR/apache_version.conf" ]; then
+        # echo -e "${YELLOW}Instalando Apache en segundo plano para futuras configuraciones...${NC}"
+        # (install_apache --silent) >/dev/null 2>&1
+    # fi
 
     echo -e "${GREEN}Nginx $nginx_version instalado correctamente.${NC}"
     log "Nginx $nginx_version instalado correctamente."
@@ -1861,11 +1731,12 @@ install_nginx() {
 uninstall_nginx() {
     echo -e "${YELLOW}Desinstalando Nginx...${NC}"
 
-    if [ -z "$INSTALLED_NGINX_VERSION" ]; then
-        if [ -f "$CONFIG_DIR/nginx_version.conf" ]; then
-            INSTALLED_NGINX_VERSION=$(cat "$CONFIG_DIR/nginx_version.conf")
-        fi
-    fi
+    # Borrar
+    # if [ -z "$INSTALLED_NGINX_VERSION" ]; then
+        # if [ -f "$CONFIG_DIR/nginx_version.conf" ]; then
+            # INSTALLED_NGINX_VERSION=$(cat "$CONFIG_DIR/nginx_version.conf")
+        # fi
+    # fi
 
     local nginx_path="$BIN_DIR/nginx/$INSTALLED_NGINX_VERSION"
 
@@ -1879,8 +1750,6 @@ uninstall_nginx() {
 
     echo -e "${BLUE}Eliminando configuración y sitios...${NC}"
     rm -rf "$ETC_DIR/nginx"
-    rm -f "$CONFIG_DIR/nginx_version.conf"
-    rm -f "$CONFIG_DIR/server_engine.conf"
 
     echo -e "${GREEN}Nginx desinstalado correctamente.${NC}"
     log "Nginx $INSTALLED_NGINX_VERSION desinstalado."
@@ -1888,14 +1757,15 @@ uninstall_nginx() {
 
 #
 start_php_cgi() {
-    if [ -z "$INSTALLED_PHP_VERSION" ]; then
-        if [ -f "$CONFIG_DIR/php_version.conf" ]; then
-            INSTALLED_PHP_VERSION=$(cat "$CONFIG_DIR/php_version.conf")
-        else
-            echo -e "${RED}PHP no está instalado o no se detectó versión.${NC}"
-            return 1
-        fi
-    fi
+    # Borrar
+    # if [ -z "$INSTALLED_PHP_VERSION" ]; then
+        # if [ -f "$CONFIG_DIR/php_version.conf" ]; then
+            # INSTALLED_PHP_VERSION=$(cat "$CONFIG_DIR/php_version.conf")
+        # else
+            # echo -e "${RED}PHP no está instalado o no se detectó versión.${NC}"
+            # return 1
+        # fi
+    # fi
 
     local php_cgi="$BIN_DIR/php/$INSTALLED_PHP_VERSION/php-cgi.exe"
 
@@ -2069,11 +1939,11 @@ generate_default_nginx_conf() {
     local timestamp=$(date +"%Y%m%d_%H%M%S")
     local backup_path="${nginx_conf_path}.backup_$timestamp"
 
-    echo -e "${YELLOW}🔁 Reemplazando nginx.conf en: $nginx_conf_path${NC}"
+    echo -e "${YELLOW}Reemplazando nginx.conf en: $nginx_conf_path.${NC}"
 
     if [[ -f "$nginx_conf_path" ]]; then
         cp "$nginx_conf_path" "$backup_path"
-        echo -e "${CYAN}📦 Backup creado en: $backup_path${NC}"
+        echo -e "${CYAN}Backup creado en: $backup_path.${NC}"
     fi
 
     cat > "$nginx_conf_path" <<EOF

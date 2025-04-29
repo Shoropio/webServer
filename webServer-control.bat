@@ -14,37 +14,27 @@ set "timestamp=[%date% %time%]"
 
 :MENU
 cls
-echo =============================================================
-echo      Panel de control - webServer - Shoropio Corporation
-echo =============================================================
-echo [1] Iniciar Apache
-echo [2] Detener Apache
-echo [3] Iniciar Nginx
-echo [4] Detener Nginx
-echo [5] Iniciar MariaDB
-echo [6] Detener MariaDB
-echo [7] Ejecutar PHP CLI
-echo [8] Ver estado de servicios
-echo [9] Abrir https://webserver.local
-echo [10] Abrir phpMyAdmin
-echo [11] Abrir consola MariaDB
-echo [A] Iniciar TODO
-echo [B] Detener TODO
-echo [R] Reiniciar TODO
-echo [C] Reiniciar Apache
-echo [D] Reiniciar Nginx
-echo [E] Reiniciar MariaDB
-echo [U] Desinstalar Nginx
-echo [X] Desinstalar Apache
-echo [M] Desinstalar MySQL
-echo [Y] Desinstalar MariaDB
-echo [Z] Desinstalar PHP
-echo [W] Resetear instalacion completa (Esto eliminara todo tu entorno de desarrollo para siempre y eso es mucho tiempo.)
-echo [V] Verificar sintaxis de Apache
-echo [G] Verificar sintaxis de Nginx
-echo [L] Ver log
-echo [0] Salir
-echo ==========================================
+echo ========================================================================
+echo                       Panel de control - webServer
+echo ========================================================================
+
+echo [1] Iniciar Apache                    [A] Iniciar TODO
+echo [2] Detener Apache                    [B] Detener TODO
+echo [3] Iniciar Nginx                     [R] Reiniciar TODO
+echo [4] Detener Nginx                     [C] Reiniciar Apache
+echo [5] Iniciar MariaDB                   [D] Reiniciar Nginx
+echo [6] Detener MariaDB                   [E] Reiniciar MariaDB
+echo [7] Ejecutar PHP CLI                  [U] Desinstalar Nginx
+echo [8] Ver estado de servicios           [X] Desinstalar Apache
+echo [9] Abrir https://webserver.local     [M] Desinstalar MySQL
+echo [10] Abrir phpMyAdmin                 [Y] Desinstalar MariaDB
+echo [11] Abrir consola MariaDB            [Z] Desinstalar PHP
+echo [0] Salir                             [W] Borrar instalacion completa
+echo                                       [V] Verificar sintaxis de Apache
+echo                                       [G] Verificar sintaxis de Nginx
+echo                                       [L] Ver log
+
+echo ========================================================================
 set /p op=Selecciona una opcion:
 
 :: Iniciar Apache
@@ -148,6 +138,12 @@ if /i "%op%"=="B" (
     taskkill /F /IM mysqld.exe >> "%LOGFILE%" 2>&1
     taskkill /F /IM mariadbd.exe >> "%LOGFILE%" 2>&1
     echo Todos los servicios detenidos. >> "%LOGFILE%"
+    echo Esperando que todos los servicios se detengan correctamente...
+
+    :: Esperar 5 segundos para asegurar que los procesos se cierren correctamente.
+    timeout /t 5 /nobreak >nul
+
+    echo Todos los servicios detenidos correctamente. >> "%LOGFILE%"
     pause
     goto MENU
 )
@@ -258,7 +254,6 @@ if "%op%"=="0" (
 goto MENU
 
 :: Funciones internas
-
 :startApache
     tasklist | find /I "httpd.exe" >nul
     if not errorlevel 1 (
@@ -317,6 +312,7 @@ goto MENU
     echo Reiniciando todos los servicios...
     taskkill /F /IM httpd.exe >> "%LOGFILE%" 2>&1
     taskkill /F /IM nginx.exe >> "%LOGFILE%" 2>&1
+    taskkill /F /IM php-cgi.exe >> "%LOGFILE%" 2>&1
     taskkill /F /IM mysqld.exe >> "%LOGFILE%" 2>&1
     taskkill /F /IM mariadbd.exe >> "%LOGFILE%" 2>&1
     timeout /t 2 >nul
@@ -360,7 +356,7 @@ goto MENU
         start cmd /k "mysql -u root"
         popd
     ) else (
-        echo ❌ MariaDB no está instalada o mysql.exe no se encontró.
+        echo MariaDB no está instalada o mysql.exe no se encontró.
     )
     exit /b
 
@@ -388,7 +384,6 @@ goto MENU
     echo Eliminando configuracion de Nginx...
     rmdir /S /Q "%BASEDIR%\..\etc\nginx"
     del /Q "%BASEDIR%\..\config\nginx_version.conf"
-    del /Q "%BASEDIR%\..\config\server_engine.conf"
 
     echo !timestamp! Nginx desinstalado. >> "%LOGFILE%"
     echo ✅ Nginx desinstalado correctamente.
