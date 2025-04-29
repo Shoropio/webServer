@@ -29,9 +29,9 @@ echo [8] Ver estado de servicios           [X] Desinstalar Apache
 echo [9] Abrir https://webserver.local     [M] Desinstalar MySQL
 echo [10] Abrir phpMyAdmin                 [Y] Desinstalar MariaDB
 echo [11] Abrir consola MariaDB            [Z] Desinstalar PHP
-echo [0] Salir                             [W] Borrar instalacion completa
-echo                                       [V] Verificar sintaxis de Apache
-echo                                       [G] Verificar sintaxis de Nginx
+echo [12] Iniciar servidor con Apache      [W] Borrar instalacion completa
+echo [13] Iniciar servidor con Nginx       [V] Verificar sintaxis de Apache
+echo [0] Salir                             [G] Verificar sintaxis de Nginx
 echo                                       [L] Ver log
 
 echo ========================================================================
@@ -118,6 +118,29 @@ if /i "%op%"=="10" (
     goto MENU
 )
 
+:: Abrir consola MariaDB
+if /i "%op%"=="11" (
+    call :mariadbConsole
+    pause
+    goto MENU
+)
+
+:: Iniciar Apache/MariaDB
+if /i "%op%"=="12" (
+    call :startApache
+    call :startMariaDB
+    pause
+    goto MENU
+)
+
+:: Iniciar Nginx/MariaDB
+if /i "%op%"=="13" (
+    call :startNginx
+    call :startMariaDB
+    pause
+    goto MENU
+)
+
 :: Iniciar TODO
 if /i "%op%"=="A" (
     echo Iniciando todos los servicios...
@@ -185,13 +208,6 @@ if /i "%op%"=="U" (
 
 if /i "%op%"=="X" (
     call :uninstallApache
-    pause
-    goto MENU
-)
-
-:: Abrir consola MariaDB
-if /i "%op%"=="11" (
-    call :mariadbConsole
     pause
     goto MENU
 )

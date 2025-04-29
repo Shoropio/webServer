@@ -1174,8 +1174,9 @@ install_mariadb() {
     fi
 
     # Actualizar variables
-    update_env_var "DEFAULT_DB_ENGINE" "MariaDB"
-    update_env_var "DEFAULT_DB_VERSION" "$db_version"
+    update_env_var "INSTALLED_DB_ENGINE" "MariaDB"
+    update_env_var "INSTALLED_DB_ENGINE_VERSION" "$db_version"
+    update_env_var "INSTALLED_DB_ENGINE_DIR" "$BIN_DIR/mariadb/$db_version/"
 
     echo -e "${YELLOW}Usuario: root | Contraseña: root (¡cámbiala después por seguridad!)${NC}"
 }
