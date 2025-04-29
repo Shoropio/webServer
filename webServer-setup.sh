@@ -1570,13 +1570,6 @@ install_apache() {
         return 1
     fi
 
-    # Borrar
-    # Instalar Nginx en segundo plano si no está instalado
-    # if [ ! -f "$CONFIG_DIR/nginx_version.conf" ]; then
-        # echo -e "${YELLOW}Instalando Nginx para futuras configuraciones (Vhots/SSL)...${NC}"
-        # install_nginx unattended=true
-    # fi
-
     echo -e "${GREEN}Apache $apache_version instalado correctamente en $BIN_DIR/apache/$apache_version${NC}"
 }
 
@@ -1589,18 +1582,9 @@ generate_custom_httpd_conf() {
 install_nginx() {
     echo -e "${BLUE}Instalando Nginx...${NC}"
 
-    # Llamamos a la función para procesar los argumentos
-    local unattended=$(parse_arguments "$@")
-
-    echo "Instalar Nginx con unattended=$unattended"
-
-    if [[ "$unattended" == true ]]; then
-        nginx_version="${DEFAULT_NGINX_VERSION}"
-        echo "Modo unattended activado. Usando versión por defecto desde webServer.env: $NGINX_VERSION"
-    else
-        read -p "Ingresa la versión de Nginx a instalar (por defecto: ${DEFAULT_NGINX_VERSION}): " NGINX_VERSION
-        nginx_version=$(get_version "Nginx" $DEFAULT_NGINX_VERSION)
-    fi
+    #
+    read -p "Ingresa la versión de Nginx a instalar (por defecto: ${DEFAULT_NGINX_VERSION}): " NGINX_VERSION
+    nginx_version=$(get_version "Nginx" $DEFAULT_NGINX_VERSION)
 
     nginx_zip="nginx-$nginx_version.zip"
     nginx_url="https://nginx.org/download/nginx-$nginx_version.zip"
@@ -1656,20 +1640,10 @@ install_nginx() {
         update_env_var "INSTALLED_WEB_SERVER_ENGINE" "Nginx"
         update_env_var "INSTALLED_WEB_SERVER_ENGINE_VERSION" "$nginx_version"
         update_env_var "INSTALLED_WEB_SERVER_ENGINE_DIR" "$BIN_DIR/nginx/$nginx_version/"
-
-        update_env_var "INSTALLED_NGINX_VERSION" "$nginx_version"
-        update_env_var "INSTALLED_NGINX_DIR" "$BIN_DIR/nginx/$nginx_version/"
     else
         echo -e "${RED}Error al descargar Nginx.${NC}"
         return 1
     fi
-
-    # Borrar
-    # Instalar Apache en segundo plano si no está instalado
-    # if [ ! -f "$CONFIG_DIR/apache_version.conf" ]; then
-        # echo -e "${YELLOW}Instalando Apache en segundo plano para futuras configuraciones...${NC}"
-        # (install_apache --silent) >/dev/null 2>&1
-    # fi
 
     echo -e "${GREEN}Nginx $nginx_version instalado correctamente.${NC}"
     log "Nginx $nginx_version instalado correctamente."
@@ -1678,13 +1652,6 @@ install_nginx() {
 #
 uninstall_nginx() {
     echo -e "${YELLOW}Desinstalando Nginx...${NC}"
-
-    # Borrar
-    # if [ -z "$INSTALLED_NGINX_VERSION" ]; then
-        # if [ -f "$CONFIG_DIR/nginx_version.conf" ]; then
-            # INSTALLED_NGINX_VERSION=$(cat "$CONFIG_DIR/nginx_version.conf")
-        # fi
-    # fi
 
     local nginx_path="$BIN_DIR/nginx/$INSTALLED_NGINX_VERSION"
 
@@ -1705,16 +1672,6 @@ uninstall_nginx() {
 
 #
 start_php_cgi() {
-    # Borrar
-    # if [ -z "$INSTALLED_PHP_VERSION" ]; then
-        # if [ -f "$CONFIG_DIR/php_version.conf" ]; then
-            # INSTALLED_PHP_VERSION=$(cat "$CONFIG_DIR/php_version.conf")
-        # else
-            # echo -e "${RED}PHP no está instalado o no se detectó versión.${NC}"
-            # return 1
-        # fi
-    # fi
-
     local php_cgi="$BIN_DIR/php/$INSTALLED_PHP_VERSION/php-cgi.exe"
 
     if [ ! -f "$php_cgi" ]; then
@@ -1732,22 +1689,6 @@ start_php_cgi() {
     fi
 }
 
-# Función para procesar los parámetros de entrada
-parse_arguments() {
-    local unattended=false
-
-    # Procesamos los parámetros de entrada
-    for arg in "$@"; do
-        case $arg in
-            unattended=*)
-                unattended="${arg#*=}"
-                ;;
-        esac
-    done
-
-    echo "$unattended"
-}
-
 # Función para instalar todos los componentes
 install_all() {
     install_git
@@ -1760,7 +1701,7 @@ install_all() {
     install_composer
     configure_phpmyadmin
     configure_integration
-    configure_virtual_host  # Nueva función añadida
+    configure_virtual_host
     # create_startup_scripts
 
     # Mostrar resumen al final
@@ -1774,40 +1715,6 @@ log() {
     # mkdir -p "$WEB_SERVER_DIR/logs"
     echo "[$timestamp] $message" >> "$WEB_SERVER_DIR/logs/setup.log"
     echo -e "${YELLOW}$message.${NC}"
-}
-
-# Función mejorada para descargar archivos con fallback
-download_file_with_fallback() {
-    local url=$1
-    local filename=$2
-    local dest_dir=$3
-    local filepath="$dest_dir/$filename"
-
-    mkdir -p "$dest_dir"
-
-    if [ -f "$filepath" ]; then
-        log "Archivo $filename ya existe. Omitiendo descarga."
-        return 0
-    fi
-
-    log "Intentando descargar $filename desde $url..."
-
-    if command -v wget &> /dev/null; then
-        wget -q --show-progress -O "$filepath" "$url" && log "Descarga completada con wget." && return 0
-    fi
-
-    if command -v curl &> /dev/null; then
-        curl -L -o "$filepath" "$url" && log "Descarga completada con curl." && return 0
-    fi
-
-    if command -v choco &> /dev/null; then
-        choco install -y "$filename"
-        log "Intento de descarga con Chocolatey para $filename"
-        return 0
-    fi
-
-    log "ERROR: No se pudo descargar $filename desde $url"
-    return 1
 }
 
 # Función para instalar Redis y Memcached
