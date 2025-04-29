@@ -794,47 +794,42 @@ install_git() {
     git --version
 }
 
-# Función para reemplazar variables en una plantilla y generar el archivo final
+# Motor de plantillas con variables dinámicas
 render_template() {
     local template_file="$1"
     local output_file="$2"
+    declare -n vars="$3"  # Referencia al array asociativo pasado
 
-    # Leemos la plantilla, reemplazamos variables conocidas
-    sed \
-        -e "s|{{YEAR}}|$(date +%Y)|g" \
-        -e "s|{{DOCROOT}}|${WEB_SERVER_DIR}/www|g" \
-        "$template_file" > "$output_file"
+    # Leer plantilla en variable
+    local content
+    content=$(<"$template_file")
+
+    # Reemplazar todas las variables {{VAR}}
+    for key in "${!vars[@]}"; do
+        content="${content//\{\{$key\}\}/${vars[$key]}}"
+    done
+
+    # Guardar en el archivo destino
+    echo "$content" > "$output_file"
 }
 
-# Función para crear archivos de prueba usando plantillas
+# Crear archivos de prueba
 create_test_files() {
     echo -e "${BLUE}Creando archivos de prueba en $WEB_SERVER_DIR/www...${NC}"
 
     mkdir -p "$WEB_SERVER_DIR/www"
 
-    # Renderizar y copiar las plantillas
-    render_template "./plantillas/index.php.tpl" "$WEB_SERVER_DIR/www/index.php"
-    render_template "./plantillas/phpinfo.php.tpl" "$WEB_SERVER_DIR/www/phpinfo.php"
+    # Declaramos las variables que queremos reemplazar en las plantillas
+    declare -A template_vars=(
+        [YEAR]="$(date +%Y)"
+        [DOCROOT]="${WEB_SERVER_DIR}/www"
+        [AUTHOR]="Shoropio Corporation"
+        [SERVER_NAME]="WebServer"
+    )
 
-    echo -e "${GREEN}Archivos de prueba creados en $WEB_SERVER_DIR/www/${NC}"
-    echo -e "${YELLOW}Accede a http://localhost/index.php para ver la información del servidor${NC}"
-    echo -e "${YELLOW}Accede a http://localhost/phpinfo.php para ver phpinfo() completo${NC}"
-}
-
-
-# Función para crear archivos de prueba
-create_test_fildes() {
-    echo -e "${BLUE}Creando archivos de prueba en $WEB_SERVER_DIR/www...${NC}"
-
-    # Archivo index.php con información del servidor
-    cat > "$WEB_SERVER_DIR/www/index.php" << 'EOF'
-rrrrr
-EOF
-
-    # Archivo phpinfo.php
-    cat > "$WEB_SERVER_DIR/www/phpinfo.php" << 'EOF'
-gg
-EOF
+    # Renderizamos cada archivo
+    render_template "./plantillas/index.php.tpl" "$WEB_SERVER_DIR/www/index.php" template_vars
+    render_template "./plantillas/phpinfo.php.tpl" "$WEB_SERVER_DIR/www/phpinfo.php" template_vars
 
     echo -e "${GREEN}Archivos de prueba creados en $WEB_SERVER_DIR/www/${NC}"
     echo -e "${YELLOW}Accede a http://localhost/index.php para ver la información del servidor${NC}"
@@ -1009,8 +1004,6 @@ install_php() {
         sed -i 's/;extension=zip/extension=zip/' "$ini_file"
         sed -i 's/;extension=intl/extension=intl/' "$ini_file"
 
-        # enable_dl = Off
-
         # Establecer la ruta de extension_dir en php.ini
         sed -i "s|;extension_dir = \"ext\"|extension_dir = \"$WEB_SERVER_DIR/bin/php/$php_version/ext\"|" "$ini_file"
         sed -i "s|^;session.save_path = \"/tmp\"|session.save_path = \"$WEB_SERVER_DIR/tmp\"|" "$ini_file"
@@ -1025,8 +1018,8 @@ install_php() {
         sed -i 's/^post_max_size = .*/post_max_size = 2G/' "$ini_file"
         sed -i 's/^upload_max_filesize = .*/upload_max_filesize = 2G/' "$ini_file"
         sed -i 's/^session.gc_maxlifetime = .*/session.gc_maxlifetime = 36000/' "$ini_file"
-        # sed -i 's/^;date.timezone = .*/date.timezone = "America/Costa_Rica"/' "$ini_file"
         sed -i 's|^;date.timezone =|date.timezone = "America/Costa_Rica"|' "$ini_file"
+        sed -i 's/^enable_dl = .*/enable_dl = On/' "$ini_file"
 
         # Guardar versión instalada
         update_env_var "INSTALLED_PHP_VERSION" "$php_version"
@@ -1139,152 +1132,107 @@ install_node() {
 }
 
 # Función para instalar MariaDB
-install_database_prueba() {
-    db_version=$(get_version "$INSTALLED_DB_ENGINE" $DEFAULT_DB_VERSION)
-    mariadb_zip="mariadb-$db_version-winx64.zip"
-    mariadb_url="https://downloads.mariadb.org/interstitial/mariadb-$db_version/winx64-packages/$mariadb_zip"
+install_mariadb() {
+    local db_version="$1"
+    local mariadb_zip="mariadb-$db_version-winx64.zip"
+    local mariadb_url="https://downloads.mariadb.org/interstitial/mariadb-$db_version/winx64-packages/$mariadb_zip"
 
-    # Descargar MariaDB
-    # download_file "$mariadb_url" "$mariadb_zip" "$DOWNLOADS_DIR"
+    echo -e "${BLUE}Descargando MariaDB $db_version...${NC}"
+    download_file "$mariadb_url" "$mariadb_zip" "$DOWNLOADS_DIR"
 
-    # Descomprimir
+    if [ ! -f "$DOWNLOADS_DIR/$mariadb_zip" ]; then
+        echo -e "${RED}Error: No se pudo descargar MariaDB.${NC}"
+        return 1
+    fi
+
     echo -e "${BLUE}Descomprimiendo MariaDB...${NC}"
     unzip -q "$DOWNLOADS_DIR/$mariadb_zip" -d "$BIN_DIR/mariadb"
     mv "$BIN_DIR/mariadb/mariadb-$db_version-winx64" "$BIN_DIR/mariadb/$db_version"
 
-    # --- Inicializar la base de datos ---
-    echo -e "${BLUE}Inicializando MariaDB...${NC}"
-    # "$BIN_DIR/mariadb/$db_version/bin/mysql_install_db.exe" --datadir="$BIN_DIR/mariadb/$db_version/data" --password=root --service=MariaDB
-    "$BIN_DIR/mariadb/$db_version/bin/mariadb-install-db.exe" --datadir="$BIN_DIR/mariadb/$db_version/data" --password=root --service=MariaDB
+    local mariadb_bin="$BIN_DIR/mariadb/$db_version"
 
-    if ! "$BIN_DIR/mariadb/$db_version/bin/mariadb-install-db.exe" --datadir="$BIN_DIR/mariadb/$db_version/data" --password=root --service=MariaDB; then
-        echo -e "${RED}Error al inicializar la base de datos de MariaDB. Revisa los logs si existen.${NC}"
-        #return 1
-    fi
-    echo -e "${GREEN}Inicialización completada.${NC}"
-
-    # Agregar al PATH
-    #add_to_path "$mariadb_bin"
-
-    # --- Instalar y Iniciar el servicio ---
-    echo -e "${BLUE}Instalando y iniciando el servicio de MariaDB...${NC}"
-    "$BIN_DIR/mariadb/$db_version/bin/mariadbd.exe" --install MariaDB --console > "$WEB_SERVER_DIR/logs/mariadb.log" 2>&1 &
-    if ! "$BIN_DIR/mariadb/$db_version/bin/mariadbd.exe" --install MariaDB; then
-        echo -e "${RED}Error al instalar el servicio de MariaDB.${NC}"
-        #return 1
+    # Inicializar base de datos si no existe
+    if [ ! -d "$mariadb_bin/data/mysql" ]; then
+        echo -e "${BLUE}Inicializando la base de datos MariaDB...${NC}"
+        "$mariadb_bin/bin/mariadb-install-db.exe" --datadir="$mariadb_bin/data" --password=root
+        if [ $? -ne 0 ]; then
+            echo -e "${RED}Error al inicializar la base de datos.${NC}"
+            return 1
+        fi
     fi
 
-    if ! net start MariaDB; then
-        echo -e "${RED}Error al iniciar el servicio de MariaDB. Verifica que el servicio se haya instalado correctamente.${NC}"
-        #return 1
-    fi
-    echo -e "${GREEN}Servicio de MariaDB instalado e iniciado.${NC}"
+    # Instalar servicio
+    echo -e "${BLUE}Instalando servicio MariaDB...${NC}"
+    "$mariadb_bin/bin/mariadbd.exe" --install MariaDB
 
-    # --- Verificar estado ---
-    sleep 2
-    if sc query MariaDB | grep "RUNNING"; then
-        echo -e "${GREEN}MariaDB se ha instalado y está en ejecución.${NC}"
-        echo -e "Usuario: root | Contraseña: root (¡cambiala después por seguridad!)${NC}"
+    # Iniciar servicio
+    if net start MariaDB; then
+        echo -e "${GREEN}MariaDB $db_version instalado y ejecutándose.${NC}"
     else
-        echo -e "${RED}Error: El servicio de MariaDB no se está ejecutando. Revisa los logs del servicio de Windows.${NC}"
-        #return 1
+        echo -e "${RED}Error al iniciar el servicio de MariaDB.${NC}"
+        return 1
     fi
 
-    # Instalar MariaDB
-    echo -e "${BLUE}Instalando MariaDB $DEFAULT_DB_VERSION...${NC}"
-    #install_mariadb "$DEFAULT_DB_VERSION"
+    # Actualizar variables
+    update_env_var "DEFAULT_DB_ENGINE" "MariaDB"
+    update_env_var "DEFAULT_DB_VERSION" "$db_version"
 
-    echo -e "${GREEN}¡Instalación completada!${NC}"
+    echo -e "${YELLOW}Usuario: root | Contraseña: root (¡cámbiala después por seguridad!)${NC}"
 }
 
+# Función para instalar MySQL
+install_mysql() {
+    local db_version="$1"
+    local mysql_zip="mysql-$db_version-winx64.zip"
+    local mysql_url="https://dev.mysql.com/get/Downloads/MySQL-$db_version/$mysql_zip"
 
-# Función para instalar la base de datos
+    echo -e "${BLUE}Descargando MySQL $db_version...${NC}"
+    download_file "$mysql_url" "$mysql_zip" "$DOWNLOADS_DIR"
+
+    if [ ! -f "$DOWNLOADS_DIR/$mysql_zip" ]; then
+        echo -e "${RED}Error: No se pudo descargar MySQL.${NC}"
+        return 1
+    fi
+
+    echo -e "${BLUE}Descomprimiendo MySQL...${NC}"
+    unzip -q "$DOWNLOADS_DIR/$mysql_zip" -d "$BIN_DIR/mysql"
+    mv "$BIN_DIR/mysql/mysql-$db_version-winx64" "$BIN_DIR/mysql/$db_version"
+
+    local mysql_bin="$BIN_DIR/mysql/$db_version"
+
+    # (Opcional) Aquí podrías inicializar la base de datos de MySQL si quieres
+    # "$mysql_bin/bin/mysqld.exe" --initialize-insecure --basedir="$mysql_bin" --datadir="$mysql_bin/data"
+
+    add_to_path "$mysql_bin/bin"
+
+    # Actualizar variables
+    update_env_var "DEFAULT_DB_ENGINE" "MySQL"
+    update_env_var "DEFAULT_DB_VERSION" "$db_version"
+
+    echo -e "${GREEN}MySQL $db_version instalado correctamente.${NC}"
+}
+
+# Función principal para instalar la base de datos
 install_database() {
     echo -e "${BLUE}Instalando Base de Datos...${NC}"
     read -p "¿Qué motor de base de datos prefieres? (MySQL/MariaDB, por defecto $DEFAULT_DB_ENGINE): " db_engine
-    INSTALLED_DB_ENGINE=${db_engine:-$DEFAULT_DB_ENGINE}
+    local selected_engine="${db_engine:-$DEFAULT_DB_ENGINE}"
 
-    db_version=$(get_version "$INSTALLED_DB_ENGINE" $DEFAULT_DB_VERSION)
+    local db_version
+    db_version=$(get_version "$selected_engine" "$DEFAULT_DB_VERSION")
 
-    if [ "$INSTALLED_DB_ENGINE" = "MySQL" ]; then
-        mysql_zip="mysql-$db_version-winx64.zip"
-        mysql_url="https://dev.mysql.com/get/Downloads/MySQL-$db_version/$mysql_zip"
-
-        download_file "$mysql_url" "$mysql_zip" "$DOWNLOADS_DIR"
-
-        if [ -f "$DOWNLOADS_DIR/$mysql_zip" ]; then
-            echo -e "${BLUE}Descomprimiendo MySQL...${NC}"
-            unzip -q "$DOWNLOADS_DIR/$mysql_zip" -d "$BIN_DIR/mysql"
-            mv "$BIN_DIR/mysql/mysql-$db_version-winx64" "$BIN_DIR/mysql/$db_version"
-            add_to_path "$BIN_DIR/mysql/$db_version/bin"
-        fi
-    else
-        mariadb_zip="mariadb-$db_version-winx64.zip"
-        mariadb_url="https://downloads.mariadb.org/interstitial/mariadb-$db_version/winx64-packages/$mariadb_zip"
-
-        download_file "$mariadb_url" "$mariadb_zip" "$DOWNLOADS_DIR"
-
-        if [ -f "$DOWNLOADS_DIR/$mariadb_zip" ]; then
-            echo -e "${BLUE}Descomprimiendo MariaDB...${NC}"
-            unzip -q "$DOWNLOADS_DIR/$mariadb_zip" -d "$BIN_DIR/mariadb"
-            mv "$BIN_DIR/mariadb/mariadb-$db_version-winx64" "$BIN_DIR/mariadb/$db_version"
-
-            # Guardar versión instalada
-            update_env_var "DEFAULT_DB_ENGINE" "MariaDB"
-            update_env_var "DEFAULT_DB_VERSION" "$db_version"
-
-            # Iniciar y configurar MariaDB
-            MARIADB_BIN="$BIN_DIR/mariadb/$db_version"
-
-            # Crear carpeta data si no existe
-            if [ ! -d "$MARIADB_BIN/data" ]; then
-                #mkdir -p "$MARIADB_BIN/data"
-                log "Carpeta data creada: $MARIADB_BIN/data"
-            fi
-
-            # Inicializar base de datos si no existe la carpeta 'data'
-
-            #--defaults-extra-file=my.ini
-
-            if [ ! -d "$BIN_DIR/mariadb/$db_version/data/mysql" ]; then
-                echo -e "${BLUE}Inicializando la base de datos MariaDB...${NC}"
-                # "$BIN_DIR/mariadb/$db_version/bin/mysqld.exe" --initialize-insecure --basedir="$BIN_DIR/mariadb/$db_version" --datadir="$BIN_DIR/mariadb/$db_version/data" --console
-                # "$BIN_DIR/mariadb/$db_version/bin/mariadb-install-db.exe" --datadir="$BIN_DIR/mariadb/$db_version/data" --basedir="$BIN_DIR/mariadb/$db_version" --auth-root-authentication-method=normal
-                # "$BIN_DIR/mariadb/$db_version/bin/mysqld.exe" --basedir="$BIN_DIR/mariadb/$db_version" --datadir="$BIN_DIR/mariadb/$db_version/data" --console
-                # "$BIN_DIR/mariadb/$db_version/bin/mariadb-install-db.exe" --datadir="$BIN_DIR/mariadb/$db_version/data" --service=MariaDB --password=root
-                "$BIN_DIR/mariadb/$db_version/bin/mariadb-install-db.exe" --datadir="$BIN_DIR/mariadb/$db_version/data" --password=root
-                echo -e "${GREEN}Base de datos inicializada sin contraseña para root.${NC}"
-            fi
-
-            # Crear my.ini si no existe
-            #create_mariadb_ini "$db_version"
-
-            # Iniciar el servicio
-            echo -e "${BLUE}Iniciando servicio de MariaDB...${NC}"
-
-            # Iniciar MariaDB en segundo plano
-            echo -e "${BLUE}Iniciando MariaDB...${NC}"
-            #"$BIN_DIR/mariadb/$db_version/bin/mysqld.exe" --defaults-file="$BIN_DIR/mariadb/$db_version/my.ini" --console > "$WEB_SERVER_DIR/logs/mariadb.log" 2>&1 &
-            "$BIN_DIR/mariadb/$db_version/bin/mariadbd.exe" --install MariaDB --console > "$WEB_SERVER_DIR/logs/mariadb.log" 2>&1 &
-            #"$BIN_DIR/mariadb/$db_version/bin/mariadbd.exe" --install MariaDB --defaults-file="$BIN_DIR/mariadb/$db_version/my.ini" --console > "$WEB_SERVER_DIR/logs/mariadb.log" 2>&1 &
-            #"$BIN_DIR/mariadb/$db_version/bin/mysqld.exe" --install
-            #"$BIN_DIR/mariadb/$db_version/bin/mysqld.exe" --install MariaDB --defaults-file="$BIN_DIR/mariadb/$db_version/my.ini" --datadir="$BIN_DIR/mariadb/$db_version/data"
-            #sc stop MariaDB
-            #sc delete MariaDB
-
-            # Confirmar que arrancó correctamente
-            sleep 2
-            # if pgrep -f "mariadbd" > /dev/null; then
-                # echo -e "${GREEN}MariaDB está en ejecución.${NC}"
-            # else
-                # echo -e "${RED}Error al iniciar MariaDB. Verifica el archivo de log: logs/mariadb.log.${NC}"
-            # fi
-
-            #add_to_path "$BIN_DIR/mariadb/$db_version/bin"
-        fi
-    fi
-
-    echo -e "${GREEN}$INSTALLED_DB_ENGINE $db_version instalado correctamente.${NC}"
+    case "$selected_engine" in
+        [Mm]aria[Dd][Bb])
+            install_mariadb "$db_version"
+            ;;
+        [Mm][Yy][Ss][Qq][Ll])
+            install_mysql "$db_version"
+            ;;
+        *)
+            echo -e "${RED}Motor no soportado: $selected_engine${NC}"
+            return 1
+            ;;
+    esac
 }
 
 # Función para instalar phpMyAdmin
